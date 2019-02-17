@@ -19,20 +19,29 @@ public:
     virtual int move();
     virtual void cleanUp();
     bool moveOk(Actor* actor,double x, double y) const;
-    bool boundingBoxOverlap(double x1,double y1,double x2, double y2y) const;
+
     //decrement numOfCitizen by 1
     void lostCitizen(){
         num_citizens--;
     }
     
+    void savedCitizen(){
+        num_citizens--;
+        citizenSaved = true;
+    }
+    list<Actor*> checkOverlap(Actor* requestActor);
+    void setLevelFinished();
 private:
+    bool boundingBoxOverlap(double x1,double y1,double x2, double y2y) const;
     string generateStateText() const;
+    bool overlapWith(double x1,double y1,double x2,double y2) const;
     string generateLevelString(int level) const;
     void askActorsDoSomething();
     void deleteDiedActors();
-    void createActors();
+    int createActors();
     int num_citizens;
-    bool have_player;
+    bool levelFinished;
+    bool citizenSaved;
     Penelope* player;
     list<Actor*> my_actors;
 };

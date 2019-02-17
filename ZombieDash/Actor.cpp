@@ -2,44 +2,49 @@
 #include "GraphObject.h"
 #include "GameConstants.h"
 #include "StudentWorld.h"
-
+#include <list>
 // Students:  Add code to this file, Actor.h, StudentWorld.h, and StudentWorld.cpp
 
 //----------------------Actor class----------------------------
+
 // constructor
 Actor::Actor(int imageID, double startX, double startY,StudentWorld* world,Direction dir, int depth , double size):GraphObject(imageID,startX,startY,dir,depth,size){
     num_lives = 1; // default is 1
     my_world = world;
 }
-
-// destructor
-Actor::~Actor(){}
+// all the actors except for Penelope will checkOverlap
+// checkOverlap is pure virtual function
+// which requires derived classes to define it
 void Actor::doSomething(){
-    
+    checkOverlap();
 }
+
+// this function will be explicitly used
+// by Penelope object to set her num_lives to 3
 void Actor::setNumlives(int num){
     num_lives = num;
 }
+
 bool Actor::isAlive() const{
     return num_lives > 0;
 }
 
+// this function will be called by
+// actors derived from destructive objects
+// and infectable actors themselves
 void Actor::decrementLives(){
     num_lives-=1;
 }
 
-
-
-//----------------------Wall class-------------------------------
-
-Wall::Wall(int imageID, double startX, double startY,StudentWorld* world,Direction dir, int depth, double size):Actor(imageID,startX,startY,world,dir,depth,size){
-    
+// this function is used to inform studentWorld
+// that corresponding sound should be played
+void Actor::playSoundOnEffect(int soundID){
+    StudentWorld* world = getWorld();
+    world->playSound(soundID);
 }
-Wall::~Wall(){}
 
-void Wall::doSomething(){}
 
-bool Wall:: damagable() const{ return false; }
+
 
 //-------------------Infectable Actor class-----------------------
 
@@ -50,7 +55,7 @@ InfectableActor::InfectableActor(int imageID, double startX, double startY, Stud
     infected = false;
 }
 // desctructor
-InfectableActor::~InfectableActor(){ }
+//InfectableActor::~InfectableActor(){ } inlined in header file
 
 
 // return true when infection_count is 500
@@ -58,14 +63,6 @@ bool InfectableActor::infectionStatus(){
     if(infection_count == 500) infected = true;
     return infected;
 }
-
-// this function is used to inform studentWorld
-// that corresponding sound should be played
-void InfectableActor::playSoundOnEffect(int soundID){
-    StudentWorld* world = getWorld();
-    world->playSound(soundID);
-}
-
 
 
 
@@ -80,8 +77,6 @@ Penelope::Penelope(int imageID, double startX, double startY, StudentWorld* worl
     can_exit = false;
 }
 
-//  destructor
-Penelope::~Penelope(){}
 void Penelope::getKeyAndPerform() {
     int value;
     StudentWorld* world = getWorld();
@@ -120,7 +115,11 @@ void Penelope::getKeyAndPerform() {
     }
 }
 
-//
+// Penelope needs to inform studentWorld when lost one life
+void Penelope::decrementLives(){
+    Actor::decrementLives();
+    getWorld()->decLives();
+}
 //
 void Penelope::doSomething(){
     if(isAlive()){
@@ -141,4 +140,36 @@ void Penelope:: dropLandMine(){
 }
 
 
+//---------------Exit----------------------------------------
+//constructor
+Exit::Exit(int imageID, double startX, double startY,
+           StudentWorld* world,Direction dir, int depth,
+           double size):Actor(imageID,startX,startY,world,dir,depth,size){}
 
+void Exit::checkOverlap(){
+    StudentWorld* world = getWorld();
+    list<Actor*> overlapedActors = world->checkOverlap(this);
+    for(auto actorPtr:overlapedActors){
+        if ( actorPtr->isCitizen()){
+            actorPtr->decrementLives();
+            world->increaseScore(500);
+            playSoundOnEffect(SOUND_CITIZEN_SAVED);
+            world->lostCitizen();
+        }
+        //it is penelope since they are the only types allowed to leave
+        else if ( actorPtr->allowedToExit()){
+            // won't call play soundOnEffect
+            // it's not clear whether all citizens have been saved
+            // will let studentWorld to handle it instead
+            world->setLevelFinished();
+        }
+    }
+    
+}
+
+//----------------------Wall class-------------------------------
+
+//constructor
+Wall::Wall(int imageID, double startX, double startY,StudentWorld* world,Direction dir, int depth, double size):Actor(imageID,startX,startY,world,dir,depth,size){}
+
+//void Wall::doSomething(){} inlined in header file

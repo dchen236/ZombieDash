@@ -21,7 +21,7 @@ void GameWorld::playSound(int soundID)
     m_controller->playSound(soundID);
 }
 
-void GameWorld::setGameStatText(string text)
+void GameWorld::setGameStateText(string text)
 {
     m_controller->setGameStatText(text);
 }

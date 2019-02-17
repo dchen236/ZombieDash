@@ -7,15 +7,15 @@
 // Students:  Add code to this file, Actor.cpp, StudentWorld.h, and StudentWorld.cpp
 
 class StudentWorld;
+
 class Actor:public GraphObject{
 public:
-    Actor(int imageID, double startX, double startY,StudentWorld* my_world, Direction dir = 0, int depth = 0, double size = 1.0);
-    virtual ~Actor();
+    Actor(int imageID, double startX, double startY,StudentWorld* world, Direction dir = 0, int depth = 0, double size = 1.0);
+    virtual ~Actor(){};
     virtual void doSomething();
-    
     bool isAlive() const;
-    void decrementLives();
-//    only infectable actors below are not infectable
+    virtual void decrementLives();
+//    only actors derived from infectable actors are infectable
     virtual bool infectable() const{return false;}
 //    most actors are not damagable except for walls
     virtual bool damagable() const{return true;}
@@ -23,43 +23,47 @@ public:
     virtual bool allowedToExit() const{return false;}
 //    default false, will be overriden by citizens
     virtual bool isCitizen() const{return false;}
-//    virtual bool canBeMovedOnTo() const=0;
+    StudentWorld* getWorld() const{ return my_world;}
+    virtual bool canBeMovedOnTo() const=0;
     // virtual bool moveAble();
 protected:
+    virtual void checkOverlap() = 0;
+    void playSoundOnEffect(int soundID);
     void setNumlives(int num); // only Penelope will call it
 private:
     StudentWorld* my_world;
     int num_lives;
 };
 
-class Wall:public Actor{
-public:
-    Wall(int imageID, double startX, double startY,StudentWorld* my_world, Direction dir = 0, int depth = 0, double size = 1.0);
-    virtual ~Wall();
-    virtual void doSomething();
-    virtual bool damagable() const;
-//    virtual bool canBeMovedOnTo() const { return false; }
-};
 
 class InfectableActor:public Actor{
 public:
     InfectableActor(int imageID, double startX, double startY, StudentWorld* world, Direction dir = 0, int depth = 0, double size = 1.0);
-    virtual ~InfectableActor();
+    virtual ~InfectableActor(){};
 //    virtual void doSomething()=0;
 //    will be called by zombies
     virtual bool infectable() const { return true; }
 //    will be called by exit
     bool allowedToExit() const { return true; } // not virtual
     
+
+    
     //  unique functions
     bool infectionStatus();// not const may change infected status
-    void playSoundOnEffect(int soundID);
+//    void playSoundOnEffect(int soundID);
 //    inline functions
     int infectionCount() const { return infection_count; }
     void incrementInfectionCount() { infection_count+=1; }
-    StudentWorld* getWorld() const{ return my_world;}
-//    virtual bool canBeMovedOnTo() const { return false; }
+    
+    virtual bool canBeMovedOnTo() const { return false; }
 private:
+    // both of citizens and Penelope doesn't check
+    // for overlap
+    // citizens are submissive to be checked
+    // Penelope will define her own doSomething method
+ 
+    // it is not virtual for now may be changed
+    void checkOverlap(){}
     StudentWorld* my_world;
     int infection_count;
     bool infected;
@@ -69,10 +73,11 @@ private:
 class Penelope:public InfectableActor{
 public:
     Penelope(int imageID, double startX, double startY, StudentWorld* world, Direction dir = 0, int depth = 0, double size = 1.0);
-    virtual ~Penelope();
+    virtual ~Penelope(){};
     void extracted();
     
     virtual void doSomething();
+    virtual void decrementLives();
 //  unique functions
     int numVaccines() const{ return num_vaccines; }
     int numLandmines() const{ return num_landmines; }
@@ -93,6 +98,30 @@ private:
     int num_flamethrower;
     int num_vaccines;
 
+};
+
+class Exit:public Actor{
+public:
+    Exit(int imageID, double startX, double startY,StudentWorld* world, Direction dir = 0, int depth = 0, double size = 1.0);
+    virtual ~Exit(){};
+    virtual bool canBeMovedOnTo() const { return true; }
+//    virtual void doSomething(); handled by abc
+    virtual bool damagable() const{ return false; }
+private:
+    virtual void checkOverlap();
+};
+
+
+class Wall:public Actor{
+public:
+    Wall(int imageID, double startX, double startY,StudentWorld* my_world, Direction dir = 0, int depth = 0, double size = 1.0);
+    virtual ~Wall(){};
+    // do nothing
+    virtual void doSomething(){}; // wall does nothing
+    virtual bool damagable() const{ return false; }
+    virtual bool canBeMovedOnTo() const { return false; }
+private:
+    virtual void checkOverlap(){};
 };
 //TODO: CITIZEN CLASS NEEDS TO OVERRIDE ISCITIZEN
 
