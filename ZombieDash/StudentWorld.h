@@ -18,11 +18,13 @@ public:
     virtual int init();
     virtual int move();
     virtual void cleanUp();
-    
+    bool moveOk(Actor* actor,double x, double y) const;
+    bool boundingBoxOverlap(double x1,double y1,double x2, double y2y) const;
     //decrement numOfCitizen by 1
     void lostCitizen(){
         num_citizens--;
     }
+    
 private:
     string generateStateText() const;
     string generateLevelString(int level) const;

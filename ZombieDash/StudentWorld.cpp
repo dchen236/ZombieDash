@@ -8,6 +8,7 @@
 #include <iostream> // defines the overloads of the << operator
 #include <sstream>  // defines the type std::ostringstream
 #include <iomanip>
+#include <cmath>
 using namespace std;
 
 
@@ -175,4 +176,51 @@ void StudentWorld::cleanUp()
         delete (*it);
         it = my_actors.erase(it);
     }
+}
+
+bool StudentWorld::boundingBoxOverlap(double x1,double y1,double x2, double y2) const{
+    double box1X = x1+SPRITE_WIDTH-1;
+    double box2X = x2+SPRITE_WIDTH-1;
+    double box1Y = y1+SPRITE_HEIGHT-1;
+    double box2Y = y2+SPRITE_HEIGHT-1;
+    
+    if (min(x1,x2) == x1){ // x1 is smaller
+        if ( box1X >= x2) { // check if y overlaps
+            if ( min(y1,y2) == y1){
+                if ( box1Y >= y2) return true;
+            }
+            else{
+                if ( box2Y >= y1) return true;
+            }
+        }
+    }
+    else{ // x2 is smaller
+        if ( box2X >= x1){
+            if ( min(y1,y2) == y2){
+                if (box2Y >= y1) return true;
+            }
+            else{
+                if ( box1Y >= y2) return true;
+            }
+        }
+    }
+    return false;
+}
+
+// this function determine whether an actor
+// is allowed to move to here
+bool StudentWorld::moveOk(Actor* actor,double x1,double y1) const{
+    auto it = my_actors.begin();
+    while (it != my_actors.end() ){
+        //        check if it refers to the  same actor
+        if ( *it != actor  ){
+            if (boundingBoxOverlap(x1, y1, (*it)->getX(), (*it)->getY())) {
+                // immediately break the loop if one blocks another
+                return false;
+//               if ( !(*it)->canBeMovedOnTo()) return false;
+            }
+        }
+        it++;
+    }
+    return true;
 }

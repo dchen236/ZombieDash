@@ -28,12 +28,7 @@ void Actor::decrementLives(){
     num_lives-=1;
 }
 
-// default not infectable
-bool Actor::infectable() const{ return false;}
-// most object are damagable but walls are not
-bool Actor::damagable() const { return true;}
-// only infectable objects can exit
-bool Actor::allowedToExit() const { return false; }
+
 
 //----------------------Wall class-------------------------------
 
@@ -87,26 +82,32 @@ Penelope::Penelope(int imageID, double startX, double startY, StudentWorld* worl
 
 //  destructor
 Penelope::~Penelope(){}
-void Penelope::getKey() {
+void Penelope::getKeyAndPerform() {
     int value;
     StudentWorld* world = getWorld();
+    double myX = getX();
+    double myY = getY();
     if(world->getKey(value)){
         switch (value) {
             case KEY_PRESS_UP:
                 setDirection(up);
-                moveTo(getX(), getY()+4);
+                if(world->moveOk(this, myX, myY+4))
+                    moveTo(myX, myY+4);
                 break;
             case KEY_PRESS_DOWN:
                 setDirection(down);
-                moveTo(getX(), getY()-4);
+                if(world->moveOk(this, myX, myY-4))
+                    moveTo(myX, myY-4);
                 break;
             case KEY_PRESS_LEFT:
                 setDirection(left);
-                moveTo(getX()-4, getY());
+                if(world->moveOk(this, myX-4, myY))
+                    moveTo(myX-4, myY);
                 break;
             case KEY_PRESS_RIGHT:
                 setDirection(right);
-                moveTo(getX()+4,getY());
+                if(world->moveOk(this, myX+4, myY))
+                   moveTo(myX+4,myY);
                 break;
             case KEY_PRESS_SPACE:
                 
@@ -123,7 +124,7 @@ void Penelope::getKey() {
 //
 void Penelope::doSomething(){
     if(isAlive()){
-        getKey();
+        getKeyAndPerform();
     }
 
 }

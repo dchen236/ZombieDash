@@ -15,9 +15,15 @@ public:
     
     bool isAlive() const;
     void decrementLives();
-    virtual bool infectable() const;
-    virtual bool damagable() const;
-    virtual bool allowedToExit() const;
+//    only infectable actors below are not infectable
+    virtual bool infectable() const{return false;}
+//    most actors are not damagable except for walls
+    virtual bool damagable() const{return true;}
+//    only infectable actors are allowed to leave
+    virtual bool allowedToExit() const{return false;}
+//    default false, will be overriden by citizens
+    virtual bool isCitizen() const{return false;}
+//    virtual bool canBeMovedOnTo() const=0;
     // virtual bool moveAble();
 protected:
     void setNumlives(int num); // only Penelope will call it
@@ -32,7 +38,7 @@ public:
     virtual ~Wall();
     virtual void doSomething();
     virtual bool damagable() const;
-    
+//    virtual bool canBeMovedOnTo() const { return false; }
 };
 
 class InfectableActor:public Actor{
@@ -52,7 +58,7 @@ public:
     int infectionCount() const { return infection_count; }
     void incrementInfectionCount() { infection_count+=1; }
     StudentWorld* getWorld() const{ return my_world;}
-    
+//    virtual bool canBeMovedOnTo() const { return false; }
 private:
     StudentWorld* my_world;
     int infection_count;
@@ -81,14 +87,16 @@ public:
     void setExit(){ can_exit = true;}
     bool canExit() { return can_exit;}
 private:
-    void getKey();
+    void getKeyAndPerform();
     bool can_exit;
     int num_landmines;
     int num_flamethrower;
     int num_vaccines;
 
 };
+//TODO: CITIZEN CLASS NEEDS TO OVERRIDE ISCITIZEN
 
+//TODO: ZOMBIE ABC CLASS CAN BE MOVED ONTO FALSE optional
 
 
 #endif // ACTOR_H_
