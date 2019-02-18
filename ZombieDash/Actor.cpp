@@ -17,16 +17,13 @@ Actor::Actor(int imageID, double startX, double startY,StudentWorld* world,Direc
 // which requires derived classes to define it
 void Actor::doSomething(){
     if(isAlive()){
-       checkOverlap();
+       handleOverlap();
     }
 }
 
 // this function will be explicitly used
 // by Penelope object to set her num_lives to 3
-void Actor::setNumlives(int num){
-    num_lives = num;
-}
-
+// 
 bool Actor::isAlive() const{
     return num_lives > 0;
 }
@@ -38,14 +35,6 @@ void Actor::decrementLives(){
     num_lives-=1;
 }
 
-// this function is used to inform studentWorld
-// that corresponding sound should be played
-void Actor::playSoundOnEffect(int soundID){
-    StudentWorld* world = getWorld();
-    world->playSound(soundID);
-}
-
-
 
 
 //-------------------Infectable Actor class-----------------------
@@ -55,45 +44,55 @@ InfectableActor::InfectableActor(int imageID, double startX, double startY, Stud
     infection_count = 0;
     infected = false;
 }
-// desctructor
-//InfectableActor::~InfectableActor(){ } inlined in header file
 
-
-//// return true when infection_count is 500
-//bool InfectableActor::infectionStatus(){
-//    if(infection_count == 500) infected = true;
-//    return infected;
-//}
 
 // increment infection count
 // when infection count reaches to 500
 // decrement actor's life
  void InfectableActor::incrementInfectionCount(){
-     infection_count+=1;
      if ( infection_count == 500){
-         decrementLives();
-         playSoundWhenInfected();
+         infected = true;
+         return;
      }
+     infection_count+=1;
+
  }
+void InfectableActor::checkInfectedOrNot(){
+    if(infected){
+        getInfected();
+    }
+}
 
 //----------------------Penelope class----------------------------
 
 // constructor
 Penelope::Penelope(int imageID, double startX, double startY, StudentWorld* world):InfectableActor(imageID,startX,startY,world){
-    setNumlives(3);
+   // setNumlives(3);
     num_landmines = 0;
     num_flamethrower = 0;
     num_vaccines = 0;
 }
 
-//
+
+// FIXME: check comment below
 void Penelope::doSomething(){
     if(isAlive()){
         getKeyAndPerform();
-        if(isInfected()){
-            incrementInfectionCount();
-        }
     }
+    // right now Actor's doSomething only
+    // check overlap()
+    // if Penelope's handleOverlap does nothing eventually
+    // remember to remove this line of code
+    Actor::doSomething();
+}
+
+void Penelope::getInfected(){
+    decrementLives();
+}
+
+
+// Penelope's handleOverlap does nothing for nor
+void Penelope::handleOverlap(){
     
 }
 
@@ -138,9 +137,8 @@ void Penelope::getKeyAndPerform() {
 
 // Penelope needs to inform studentWorld when lost one life
 void Penelope::decrementLives(){
-    Actor::decrementLives();
-    playSoundOnEffect(SOUND_PLAYER_DIE);
     getWorld()->decLives();
+    Actor::decrementLives();
     
 }
 
@@ -163,25 +161,9 @@ Exit::Exit(int imageID, double startX, double startY,
            StudentWorld* world,Direction dir, int depth,
            double size):Actor(imageID,startX,startY,world,dir,depth,size){}
 
-void Exit::checkOverlap(){
+void Exit::handleOverlap(){
     StudentWorld* world = getWorld();
-    list<Actor*> overlapedActors = world->checkOverlap(this);
-    for(auto actorPtr:overlapedActors){
-        if ( actorPtr->isCitizen()){
-            actorPtr->decrementLives();
-            world->increaseScore(500);
-            playSoundOnEffect(SOUND_CITIZEN_SAVED);
-            world->decrementCitizen();
-        }
-        //it is penelope since they are the only types allowed to leave
-        else if ( actorPtr->allowedToExit()){
-            // won't call play soundOnEffect
-            // it's not clear whether all citizens have been saved
-            // will let studentWorld to handle it instead
-            world->setLevelFinished();
-        }
-    }
-    
+    world->exitCheckOverlap(this);
 }
 
 //----------------------Wall class-------------------------------
@@ -194,12 +176,9 @@ Goodie::Goodie(int imageID, double startX, double startY,StudentWorld* world, Di
     
 }
 
-void Goodie::checkOverlap(){
+void Goodie::handleOverlap(){
     StudentWorld* world = getWorld();
-    if ( world->overlapWithPlayer(this)){
-        decrementLives();
-        world->increaseScore(50);
-        playSoundOnEffect(SOUND_GOT_GOODIE);
+    if(world->goodiesCheckOverlap(this)){
         goodiePickedUp();
     }
 }
@@ -210,7 +189,7 @@ VaccineGoodie::VaccineGoodie(int imageID, double startX, double startY,StudentWo
 }
 void VaccineGoodie::goodiePickedUp(){
     StudentWorld* world = getWorld();
-    world->getPlayer()->pickUpVaccines();
+    world->playerPickUpVacGoodie();
 }
 
 
@@ -220,7 +199,7 @@ GasCanGoodie::GasCanGoodie(int imageID, double startX, double startY,StudentWorl
 }
 void GasCanGoodie::goodiePickedUp(){
     StudentWorld* world = getWorld();
-    world->getPlayer()->pickUpFlamethrower();
+    world->playerPickUpGasCan();
 }
 //-----------------LandMineGoodie-------------------------------
 LandmineGoodie::LandmineGoodie(int imageID, double startX, double startY,StudentWorld* world):Goodie(imageID,startX,startY,world){
@@ -228,16 +207,43 @@ LandmineGoodie::LandmineGoodie(int imageID, double startX, double startY,Student
 }
 void LandmineGoodie::goodiePickedUp(){
     StudentWorld* world = getWorld();
-    world->getPlayer()->pickUpLandmines();
+    world->playerPickUpLandGoodie();
 }
 
 
 
+//----------------DestructiveActors---------------------------------
+DestructiveActors::DestructiveActors(int imageID, double startX, double startY,StudentWorld* world, Direction dir, int depth, double size):Actor(imageID,startX,startY,world,dir,depth,size){
+    
+}
+
+void DestructiveActors::handleOverlap(){
+    getWorld()->destructiveCheckOverlap(this);
+}
 
 
+//----------------Pit-------------------------------------------------
+Pit::Pit(int imageID, double startX, double startY,StudentWorld* world):DestructiveActors(imageID,startX,startY,world){}
+
+//void Pit::handleOverlap(){
+//
+//}
+
+//----------------Flame-----------------------------------------------
+Flame::Flame(int imageID, double startX, double startY,StudentWorld* world, Direction dir):DestructiveActors(imageID,startX,startY,world,dir){}
+//void Flame::handleOverlap(){
+//
+//}
 //TODO: CITIZEN CLASS NEEDS TO OVERRIDE ISCITIZEN
 //      implement playSoundWhenInfected
 //        play zombie born
+
+
+// imlement getInfected
+// citizen needs to decrementLife
+// and lostCitizen
+// and tell world to playSound
+// and decrement score
 
 //TODO: ZOMBIE ABC CLASS CAN BE MOVED ONTO FALSE optional
 

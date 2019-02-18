@@ -42,15 +42,11 @@ int StudentWorld::init()
 //    citizenSaved = false;
     int status = createActors();
     return status;
-    // return GWSTATUS_CONTINUE_GAME;
 }
 
 // move function
 int StudentWorld::move()
 {
-    // This code is here merely to allow the game to build, run, and terminate after you hit enter.
-    // Notice that the return value GWSTATUS_PLAYER_DIED will cause our framework to end the current level.
-    //    decLives();
     //check the status of player
     if (levelFinished) {
         playSound(SOUND_LEVEL_FINISHED);
@@ -60,13 +56,13 @@ int StudentWorld::move()
         player->doSomething();
     }
     if(!player->isAlive()){
+        playSound(SOUND_PLAYER_DIE);
         return GWSTATUS_PLAYER_DIED;
     }
-    // check if reach to exit
+    
     askActorsDoSomething();
     deleteDiedActors();
     setGameStateText(generateStateText());
-
     return GWSTATUS_CONTINUE_GAME;
 }
 
@@ -102,45 +98,59 @@ bool StudentWorld::moveOk(Actor* actor,double x1,double y1) const{
     return true;
 }
 
-// This function will return a list of pointers point to actors
-// in which the actors they point to is overlapping with
-// the requestActors
-list<Actor*> StudentWorld::checkOverlap(Actor* requestActor){
-    // always check if the requestActor is the same actor
-    // that's being checked with
-    
-    //check if overlaps with Penelope first
-    list<Actor*> overlapedActors;
-    double x1 = requestActor->getX();
-    double y1 = requestActor->getY();
-    
-    if (requestActor != player && overlapWith(x1, y1, player->getX(), player->getY())){
-        overlapedActors.push_back(player);
-    }
-    
-    for (auto actorPtr:my_actors){
-        if (actorPtr != requestActor){
-            double x2 = actorPtr->getX();
-            double y2 = actorPtr->getY();
-            if( overlapWith(x1, y1, x2, y2)){
-                overlapedActors.push_back(actorPtr);
-            }
-        }
-    }
-    return overlapedActors;
+void StudentWorld::playerPickUpVacGoodie(){
+    player->pickUpVaccines();
+}
+void StudentWorld::playerPickUpLandGoodie(){
+    player->pickUpLandmines();
+}
+void StudentWorld::playerPickUpGasCan(){
+    player->pickUpFlamethrower();
 }
 
-// This function will be called by goodies
-// goodies can only be picked up by player
-// return true if overlaps with player
-// false otherwise
-bool StudentWorld::overlapWithPlayer(Actor *requestActor){
-    double x1 = requestActor->getX();
-    double y1 = requestActor->getY();
-    double playerX = player->getX();
-    double playerY = player->getY();
-    return overlapWith(x1, y1, playerX, playerY);
+void StudentWorld::exitCheckOverlap(Actor* exit){
+    
+    list<Actor*> overlapedActors = checkOverlap(exit);
+        for(auto actorPtr:overlapedActors){
+            if ( actorPtr->isCitizen()){
+                actorPtr->decrementLives();
+                citizenSaved();
+            }
+            //it is penelope since they are the only types allowed to leave
+            else if ( actorPtr->allowedToExit()){
+                
+                setLevelFinished();
+            }
+        }
 }
+
+bool StudentWorld::goodiesCheckOverlap(Actor* goodie){
+    if (overlapWithPlayer(goodie)){
+        goodie->decrementLives();
+        increaseScore(50);
+        playSound(SOUND_GOT_GOODIE);
+        return true;
+    }
+    return false;
+}
+
+void StudentWorld::destructiveCheckOverlap(Actor *destructive){
+    
+    list<Actor*> overlapedActors = checkOverlap(destructive);
+    for(auto actorPtr:overlapedActors){
+        if ( actorPtr->damagable() ){
+
+            actorPtr->decrementLives();
+            if ( actorPtr->isCitizen()){
+                citizenDied();
+            }
+        }
+
+        
+        
+    }
+}
+
 
 // This function will be called by exit when player reach to exit
 // if no citizen left
@@ -153,7 +163,67 @@ void StudentWorld::setLevelFinished(){
     }
 }
 
-//--------------- helper functions ------------------------------
+//--------------- private helper functions ------------------------------
+void StudentWorld::decrementCitizen(){
+    num_citizens--;
+}
+void StudentWorld::citizenDied(){
+    increaseScore(-1000);
+    decrementCitizen();
+    playSound(SOUND_CITIZEN_DIE);
+}
+void StudentWorld::citizenInfected(){
+    increaseScore(-1000);
+    decrementCitizen();
+    playSound(SOUND_CITIZEN_INFECTED);
+}
+void StudentWorld::citizenSaved(){
+    increaseScore(500);
+    decrementCitizen();
+    playSound(SOUND_CITIZEN_SAVED);
+    
+}
+
+
+bool StudentWorld::overlapWithPlayer(Actor *requestActor) const{
+    double x1 = requestActor->getX();
+    double y1 = requestActor->getY();
+    double playerX = player->getX();
+    double playerY = player->getY();
+    return overlapWith(x1, y1, playerX, playerY);
+}
+
+// This function will return a list of pointers point to actors
+// in which the actors they point to is overlapping with
+// the requestActors
+list<Actor*> StudentWorld::checkOverlap(Actor* requestActor){
+    // always check if the requestActor is the same actor
+    // that's being checked with
+    
+    //check if overlaps with Penelope first
+    list<Actor*> overlapedActors;
+    double x1 = requestActor->getX();
+    double y1 = requestActor->getY();
+    
+//    if (requestActor != player && overlapWith(x1, y1, player->getX(), player->getY())){
+//        overlapedActors.push_back(player);
+//    }
+    
+    if ( requestActor != player && overlapWithPlayer(requestActor)){
+        overlapedActors.push_back(player);
+    }
+    
+    for (auto actorPtr:my_actors){
+        if (actorPtr != requestActor){
+            double x2 = actorPtr->getX();
+            double y2 = actorPtr->getY();
+            if( overlapWith(x1, y1, x2, y2) == true ){
+                overlapedActors.push_back(actorPtr);
+            }
+        }
+    }
+    return overlapedActors;
+}
 
 /* generator functions are marked with *
  */
@@ -261,6 +331,11 @@ int StudentWorld::createActors(){
                         my_actors.push_back(gasGoodie);
                     }
                         break;
+                    case Level::pit:{
+                        Pit* pit = new Pit(IID_PIT, startX, startY, this);
+                        my_actors.push_back(pit);
+                    }
+                        break;
                     default:
                         break;
                 }
@@ -302,12 +377,14 @@ void StudentWorld::deleteDiedActors(){
 // This function calculate whether two actors overlaps with each other
 // not their bounding box but their center x,y location
 bool StudentWorld::overlapWith(double x1,double y1,double x2,double y2) const{
-    double centerX1 = x1+SPRITE_WIDTH/2;
-    double centerY1 = y1+SPRITE_HEIGHT/2;
-    double centerX2 = player->getX()+SPRITE_WIDTH/2;
-    double centerY2 = player->getY()+SPRITE_HEIGHT/2;
-    double diffX = centerX1-centerX2;
-    double diffY = centerY1-centerY2;
+//    double centerX1 = x1+SPRITE_WIDTH/2;
+//    double centerY1 = y1+SPRITE_HEIGHT/2;
+//    double centerX2 = x2+SPRITE_WIDTH/2;
+//    double centerY2 = y2+SPRITE_HEIGHT/2;
+//    double diffX = centerX1-centerX2;
+//    double diffY = centerY1-centerY2;
+    double diffX = x1-x2;
+    double diffY = y1-y2;
     return (diffX*diffX+diffY*diffY <= 100);
 }
 

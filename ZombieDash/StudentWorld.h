@@ -18,23 +18,33 @@ public:
     virtual int init();
     virtual int move();
     virtual void cleanUp();
-    bool moveOk(Actor* actor,double x, double y) const;
-    // this function will be called by goodies
-    // to update Penelope's goodies
-    Penelope* getPlayer(){ return player; }
-    //decrement numOfCitizen by 1
-    void decrementCitizen(){
-        num_citizens--;
-    }
     
-//    void savedCitizen(){
-//        num_citizens--;
-//        //citizenSaved = true;
-//    }
-    list<Actor*> checkOverlap(Actor* requestActor);
-    bool overlapWithPlayer(Actor* requestActor);
-    void setLevelFinished();
+
+    bool moveOk(Actor* actor,double x, double y) const;
+   
+//  The following three method will be called
+//  by goodies to update player's goodie number
+    void playerPickUpVacGoodie();
+    void playerPickUpLandGoodie();
+    void playerPickUpGasCan();
+
+    
+//    Actors checkoverlap during doSomething
+    void exitCheckOverlap(Actor* exit);
+    bool goodiesCheckOverlap(Actor* goodie);
+    void destructiveCheckOverlap(Actor* destructive);
+    
 private:
+    //decrement numOfCitizen by 1
+    void citizenDied();
+    void citizenSaved();
+    void citizenInfected();
+    void decrementCitizen();
+    list<Actor*> checkOverlap(Actor* requestActor);
+    
+    void handleOverlap(list<Actor*> actors,Actor* overlapedWith);
+    bool overlapWithPlayer(Actor* requestActor) const;
+    void setLevelFinished();
     bool boundingBoxOverlap(double x1,double y1,double x2, double y2y) const;
     string generateStateText() const;
     bool overlapWith(double x1,double y1,double x2,double y2) const;
