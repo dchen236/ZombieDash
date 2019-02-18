@@ -16,7 +16,9 @@ Actor::Actor(int imageID, double startX, double startY,StudentWorld* world,Direc
 // checkOverlap is pure virtual function
 // which requires derived classes to define it
 void Actor::doSomething(){
-    checkOverlap();
+    if(isAlive()){
+       checkOverlap();
+    }
 }
 
 // this function will be explicitly used
@@ -50,7 +52,6 @@ void Actor::playSoundOnEffect(int soundID){
 
 // constructor
 InfectableActor::InfectableActor(int imageID, double startX, double startY, StudentWorld* world, Direction dir, int depth, double size):Actor(imageID,startX,startY,world,dir,depth,size){
-    my_world = world;
     infection_count = 0;
     infected = false;
 }
@@ -58,24 +59,44 @@ InfectableActor::InfectableActor(int imageID, double startX, double startY, Stud
 //InfectableActor::~InfectableActor(){ } inlined in header file
 
 
-// return true when infection_count is 500
-bool InfectableActor::infectionStatus(){
-    if(infection_count == 500) infected = true;
-    return infected;
-}
+//// return true when infection_count is 500
+//bool InfectableActor::infectionStatus(){
+//    if(infection_count == 500) infected = true;
+//    return infected;
+//}
 
-
+// increment infection count
+// when infection count reaches to 500
+// decrement actor's life
+ void InfectableActor::incrementInfectionCount(){
+     infection_count+=1;
+     if ( infection_count == 500){
+         decrementLives();
+         playSoundWhenInfected();
+     }
+ }
 
 //----------------------Penelope class----------------------------
 
 // constructor
-Penelope::Penelope(int imageID, double startX, double startY, StudentWorld* world, Direction dir, int depth, double size):InfectableActor(imageID,startX,startY,world,dir,depth,size){
+Penelope::Penelope(int imageID, double startX, double startY, StudentWorld* world):InfectableActor(imageID,startX,startY,world){
     setNumlives(3);
     num_landmines = 0;
     num_flamethrower = 0;
     num_vaccines = 0;
-    can_exit = false;
 }
+
+//
+void Penelope::doSomething(){
+    if(isAlive()){
+        getKeyAndPerform();
+        if(isInfected()){
+            incrementInfectionCount();
+        }
+    }
+    
+}
+
 
 void Penelope::getKeyAndPerform() {
     int value;
@@ -118,15 +139,11 @@ void Penelope::getKeyAndPerform() {
 // Penelope needs to inform studentWorld when lost one life
 void Penelope::decrementLives(){
     Actor::decrementLives();
+    playSoundOnEffect(SOUND_PLAYER_DIE);
     getWorld()->decLives();
+    
 }
-//
-void Penelope::doSomething(){
-    if(isAlive()){
-        getKeyAndPerform();
-    }
 
-}
 
 
 void Penelope:: useVaccine(){
@@ -154,7 +171,7 @@ void Exit::checkOverlap(){
             actorPtr->decrementLives();
             world->increaseScore(500);
             playSoundOnEffect(SOUND_CITIZEN_SAVED);
-            world->lostCitizen();
+            world->decrementCitizen();
         }
         //it is penelope since they are the only types allowed to leave
         else if ( actorPtr->allowedToExit()){
@@ -170,6 +187,66 @@ void Exit::checkOverlap(){
 //----------------------Wall class-------------------------------
 
 //constructor
-Wall::Wall(int imageID, double startX, double startY,StudentWorld* world,Direction dir, int depth, double size):Actor(imageID,startX,startY,world,dir,depth,size){}
+Wall::Wall(int imageID, double startX, double startY,StudentWorld* world):Actor(imageID,startX,startY,world){}
 
-//void Wall::doSomething(){} inlined in header file
+//-------------------Goodie-----------------------------
+Goodie::Goodie(int imageID, double startX, double startY,StudentWorld* world, Direction dir, int depth, double size):Actor(imageID,startX,startY,world,dir,depth,size){
+    
+}
+
+void Goodie::checkOverlap(){
+    StudentWorld* world = getWorld();
+    if ( world->overlapWithPlayer(this)){
+        decrementLives();
+        world->increaseScore(50);
+        playSoundOnEffect(SOUND_GOT_GOODIE);
+        goodiePickedUp();
+    }
+}
+
+//----------------VaccineGoodie------------------------------
+VaccineGoodie::VaccineGoodie(int imageID, double startX, double startY,StudentWorld* world):Goodie(imageID,startX,startY,world){
+    
+}
+void VaccineGoodie::goodiePickedUp(){
+    StudentWorld* world = getWorld();
+    world->getPlayer()->pickUpVaccines();
+}
+
+
+//-----------------GassCanGoodie-------------------------------
+GasCanGoodie::GasCanGoodie(int imageID, double startX, double startY,StudentWorld* world):Goodie(imageID,startX,startY,world){
+    
+}
+void GasCanGoodie::goodiePickedUp(){
+    StudentWorld* world = getWorld();
+    world->getPlayer()->pickUpFlamethrower();
+}
+//-----------------LandMineGoodie-------------------------------
+LandmineGoodie::LandmineGoodie(int imageID, double startX, double startY,StudentWorld* world):Goodie(imageID,startX,startY,world){
+    
+}
+void LandmineGoodie::goodiePickedUp(){
+    StudentWorld* world = getWorld();
+    world->getPlayer()->pickUpLandmines();
+}
+
+
+
+
+
+//TODO: CITIZEN CLASS NEEDS TO OVERRIDE ISCITIZEN
+//      implement playSoundWhenInfected
+//        play zombie born
+
+//TODO: ZOMBIE ABC CLASS CAN BE MOVED ONTO FALSE optional
+
+//Destructible object
+// when being created it must check
+// if (damagable && canBeMovedOnTo){
+//   to destoye objects
+//}
+
+// if (!canBeMovedOnTo && !damagable ) {
+    // can't be placed at this location
+//}

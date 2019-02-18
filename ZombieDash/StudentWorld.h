@@ -19,17 +19,20 @@ public:
     virtual int move();
     virtual void cleanUp();
     bool moveOk(Actor* actor,double x, double y) const;
-
+    // this function will be called by goodies
+    // to update Penelope's goodies
+    Penelope* getPlayer(){ return player; }
     //decrement numOfCitizen by 1
-    void lostCitizen(){
+    void decrementCitizen(){
         num_citizens--;
     }
     
-    void savedCitizen(){
-        num_citizens--;
-        citizenSaved = true;
-    }
+//    void savedCitizen(){
+//        num_citizens--;
+//        //citizenSaved = true;
+//    }
     list<Actor*> checkOverlap(Actor* requestActor);
+    bool overlapWithPlayer(Actor* requestActor);
     void setLevelFinished();
 private:
     bool boundingBoxOverlap(double x1,double y1,double x2, double y2y) const;
@@ -41,7 +44,7 @@ private:
     int createActors();
     int num_citizens;
     bool levelFinished;
-    bool citizenSaved;
+   // bool citizenSaved;
     Penelope* player;
     list<Actor*> my_actors;
 };

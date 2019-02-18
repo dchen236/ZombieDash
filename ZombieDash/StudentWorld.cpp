@@ -23,7 +23,7 @@ StudentWorld::StudentWorld(string assetPath)
 : GameWorld(assetPath)
 {
     levelFinished = false;
-    citizenSaved = false;
+//    citizenSaved = false;
     num_citizens = 0;
     player = nullptr;
 }
@@ -39,7 +39,7 @@ int StudentWorld::init()
     player = nullptr;
     levelFinished = false;
     num_citizens = 0;
-    citizenSaved = false;
+//    citizenSaved = false;
     int status = createActors();
     return status;
     // return GWSTATUS_CONTINUE_GAME;
@@ -64,14 +64,9 @@ int StudentWorld::move()
     }
     // check if reach to exit
     askActorsDoSomething();
-    
-//    if(citizenSaved){
-//        increaseScore(500);
-////        playSound(SOUND_CITIZEN_SAVED);
-//    }
     deleteDiedActors();
     setGameStateText(generateStateText());
-    player->doSomething();
+
     return GWSTATUS_CONTINUE_GAME;
 }
 
@@ -99,7 +94,7 @@ bool StudentWorld::moveOk(Actor* actor,double x1,double y1) const{
         if ( *it != actor  ){
             if (boundingBoxOverlap(x1, y1, (*it)->getX(), (*it)->getY())) {
                 // immediately break the loop if one blocks another
-                if ( !(*it)->canBeMovedOnTo()) return false;
+                if ( !(*it)->canMoveOnTo()) return false;
             }
         }
         it++;
@@ -135,6 +130,17 @@ list<Actor*> StudentWorld::checkOverlap(Actor* requestActor){
     return overlapedActors;
 }
 
+// This function will be called by goodies
+// goodies can only be picked up by player
+// return true if overlaps with player
+// false otherwise
+bool StudentWorld::overlapWithPlayer(Actor *requestActor){
+    double x1 = requestActor->getX();
+    double y1 = requestActor->getY();
+    double playerX = player->getX();
+    double playerY = player->getY();
+    return overlapWith(x1, y1, playerX, playerY);
+}
 
 // This function will be called by exit when player reach to exit
 // if no citizen left
@@ -235,8 +241,24 @@ int StudentWorld::createActors(){
                         break;
                     case Level::exit:
                     {
-                        Exit* exit = new Exit(IID_EXIT,startX,startY,this,0,1,1.0);
+                        Exit* exit = new Exit(IID_EXIT,startX,startY,this);
                         my_actors.push_back(exit);
+                    }
+                        break;
+                    case Level::vaccine_goodie:
+                    {
+                        VaccineGoodie* vacGoodie = new VaccineGoodie(IID_VACCINE_GOODIE,startX,startY,this);
+                        my_actors.push_back(vacGoodie);
+                    }
+                        break;
+                    case Level::landmine_goodie:{
+                        LandmineGoodie* landGoodie = new LandmineGoodie(IID_LANDMINE_GOODIE, startX, startY, this);
+                        my_actors.push_back(landGoodie);
+                    }
+                        break;
+                    case Level::gas_can_goodie:{
+                        GasCanGoodie* gasGoodie = new GasCanGoodie(IID_GAS_CAN_GOODIE, startX, startY, this);
+                        my_actors.push_back(gasGoodie);
                     }
                         break;
                     default:
@@ -268,8 +290,8 @@ void StudentWorld::deleteDiedActors(){
     auto it = my_actors.begin();
     for(; it !=my_actors.end();it++){
         if (!(*it)->isAlive()){
-            
             delete (*it);
+            cerr<<"actor freed"<<endl;
             it = my_actors.erase(it);
             it--;
         }
