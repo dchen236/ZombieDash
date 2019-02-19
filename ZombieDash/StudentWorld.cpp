@@ -83,20 +83,27 @@ void StudentWorld::cleanUp()
 
 // this function determine whether an actor
 // is allowed to move to here
-bool StudentWorld::moveOk(Actor* actor,double x1,double y1) const{
+bool StudentWorld::allowedToGoto(double destiX,double destiY,int moveOrFire) const{
     auto it = my_actors.begin();
     while (it != my_actors.end() ){
         //        check if it refers to the  same actor
-        if ( *it != actor  ){
-            if (boundingBoxOverlap(x1, y1, (*it)->getX(), (*it)->getY())) {
-                // immediately break the loop if one blocks another
-                if ( !(*it)->canMoveOnTo()) return false;
+            if (boundingBoxOverlap(destiX, destiY, (*it)->getX(), (*it)->getY())) {
+//                case actors wants to move
+                if ( moveOrFire == MOVE && ( !((*it)->canMoveOnTo())) ){
+                    return false;   // immediately break the loop if one blocks another
+                }
+//                case flame wants to fire
+                else if(moveOrFire == FIRE){
+                    if( !(*it)->damagable()){
+                        return false;
+                    }
+                }
             }
-        }
         it++;
     }
     return true;
 }
+
 
 void StudentWorld::playerPickUpVacGoodie(){
     player->pickUpVaccines();
@@ -108,6 +115,61 @@ void StudentWorld::playerPickUpGasCan(){
     player->pickUpFlamethrower();
 }
 
+void StudentWorld::playerDropLandmine(){
+    Landmine* landmine = new Landmine(IID_LANDMINE, player->getX(), player->getY(), this);
+    my_actors.push_back(landmine);
+}
+
+// This is the helper function that create a flame object
+// return true if flame is created and added to my_actors
+// return false if it is not allowed to create flame
+// at requested position
+bool StudentWorld::createFrame(double x, double y,int direction) {
+    if(allowedToGoto(x, y,FIRE)){
+        Flame* flame = new Flame(IID_FLAME, x, y, this,direction);
+        my_actors.push_back(flame);
+        return true;
+    }
+    return false;
+}
+
+void StudentWorld::playerFireFlame(){
+    playSound(SOUND_PLAYER_FIRE);
+    Direction d = player->getDirection();
+    double x = player->getX();
+    double y = player->getY();
+//    four directions
+    const int up = GraphObject::up;
+    const int down = GraphObject::down;
+    const int left = GraphObject::left;
+    const int right = GraphObject::right;
+    for (int i = 1; i < 4; i++){
+        switch (d) {
+            case up:{
+                double newY= y + i*SPRITE_HEIGHT;
+                if ( !createFrame(x,newY,up) ) return;
+            }
+                break;
+            case down:{
+                double newY= y - i*SPRITE_HEIGHT;
+                if ( !createFrame(x,newY,down) ) return;
+            }
+                break;
+            case left:{
+                double newX= x - i*SPRITE_WIDTH;
+                if ( !createFrame(newX,y,left) ) return;
+            }
+                break;
+            case right:{
+                double newX= x + i*SPRITE_WIDTH;
+                if ( !createFrame(newX,y,left) ) return;
+            }
+                break;
+            default:
+                break;
+        }
+    }
+}
 void StudentWorld::exitCheckOverlap(Actor* exit){
     
     list<Actor*> overlapedActors = checkOverlap(exit);
@@ -118,7 +180,6 @@ void StudentWorld::exitCheckOverlap(Actor* exit){
             }
             //it is penelope since they are the only types allowed to leave
             else if ( actorPtr->allowedToExit()){
-                
                 setLevelFinished();
             }
         }
@@ -135,20 +196,44 @@ bool StudentWorld::goodiesCheckOverlap(Actor* goodie){
 }
 
 void StudentWorld::destructiveCheckOverlap(Actor *destructive){
-    
     list<Actor*> overlapedActors = checkOverlap(destructive);
     for(auto actorPtr:overlapedActors){
         if ( actorPtr->damagable() ){
-
             actorPtr->decrementLives();
             if ( actorPtr->isCitizen()){
                 citizenDied();
             }
         }
-
-        
-        
     }
+}
+void StudentWorld::landMineExplodes(Actor* landmine){
+    double startX = landmine->getX()-SPRITE_WIDTH;
+    double startY = landmine->getY()+SPRITE_HEIGHT;
+    for(int i = 0; i < 3; i++){
+        for (int j = 0; j < 3; j++){
+            double x = startX+i*SPRITE_WIDTH;
+            double y = startY-j*SPRITE_HEIGHT;
+            Flame* flame = new Flame(IID_FLAME, x, y, this, 0);
+            my_actors.push_back(flame);
+        }
+    }
+    Pit* pit = new Pit(IID_PIT, startX+SPRITE_WIDTH, startY-SPRITE_HEIGHT, this);
+    my_actors.push_back(pit);
+    playSound(SOUND_LANDMINE_EXPLODE);
+}
+bool StudentWorld::landMineCheckOverlap(Actor *landmine){
+    list<Actor*> overlapedActors = checkOverlap(landmine);
+    for(auto actorPtr:overlapedActors){
+        if ( actorPtr->damagable() ){
+            actorPtr->decrementLives();
+            landMineExplodes(landmine);
+            if ( actorPtr->isCitizen()){
+                citizenDied();
+            }
+            return true;
+        }
+    }
+    return false;
 }
 
 

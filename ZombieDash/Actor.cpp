@@ -45,13 +45,22 @@ InfectableActor::InfectableActor(int imageID, double startX, double startY, Stud
     infected = false;
 }
 
+void InfectableActor::doSometing(){
+    checkInfectedOrNot();
+}
 
+void InfectableActor::cure_self(){
+    if(cureAble()){
+        infected = false;
+        infection_count=0;
+    }
+}
 // increment infection count
 // when infection count reaches to 500
 // decrement actor's life
  void InfectableActor::incrementInfectionCount(){
      if ( infection_count == 500){
-         infected = true;
+         decrementLives();
          return;
      }
      infection_count+=1;
@@ -59,7 +68,7 @@ InfectableActor::InfectableActor(int imageID, double startX, double startY, Stud
  }
 void InfectableActor::checkInfectedOrNot(){
     if(infected){
-        getInfected();
+        incrementInfectionCount();
     }
 }
 
@@ -76,22 +85,21 @@ Penelope::Penelope(int imageID, double startX, double startY, StudentWorld* worl
 
 // FIXME: check comment below
 void Penelope::doSomething(){
-    if(isAlive()){
-        getKeyAndPerform();
-    }
+    if(!isAlive()) return;
+// at this point Penelope is alive
+// she should check if she's infected first
+    InfectableActor::doSometing();
+    getKeyAndPerform();
     // right now Actor's doSomething only
     // check overlap()
     // if Penelope's handleOverlap does nothing eventually
     // remember to remove this line of code
-    Actor::doSomething();
-}
-
-void Penelope::getInfected(){
-    decrementLives();
+  //  Actor::doSomething();
 }
 
 
-// Penelope's handleOverlap does nothing for nor
+
+// FIXME: determine whether to keep this method or not
 void Penelope::handleOverlap(){
     
 }
@@ -106,30 +114,32 @@ void Penelope::getKeyAndPerform() {
         switch (value) {
             case KEY_PRESS_UP:
                 setDirection(up);
-                if(world->moveOk(this, myX, myY+4))
+                if(world->allowedToGoto( myX, myY+4,MOVE))
                     moveTo(myX, myY+4);
                 break;
             case KEY_PRESS_DOWN:
                 setDirection(down);
-                if(world->moveOk(this, myX, myY-4))
+                if(world->allowedToGoto( myX, myY-4,MOVE))
                     moveTo(myX, myY-4);
                 break;
             case KEY_PRESS_LEFT:
                 setDirection(left);
-                if(world->moveOk(this, myX-4, myY))
+                if(world->allowedToGoto( myX-4, myY,MOVE))
                     moveTo(myX-4, myY);
                 break;
             case KEY_PRESS_RIGHT:
                 setDirection(right);
-                if(world->moveOk(this, myX+4, myY))
+                if(world->allowedToGoto( myX+4, myY,MOVE))
                    moveTo(myX+4,myY);
                 break;
-            case KEY_PRESS_SPACE:
-                
+            case KEY_PRESS_SPACE:   // Fire flame
+                fireFlame();
                 break;
-            case KEY_PRESS_TAB:
+            case KEY_PRESS_TAB:     // drop landmine
+                dropLandMine();
                 break;
-            case KEY_PRESS_ENTER:
+            case KEY_PRESS_ENTER:   // use vaccine
+                useVaccine();
                 break;
         }
     }
@@ -137,21 +147,30 @@ void Penelope::getKeyAndPerform() {
 
 // Penelope needs to inform studentWorld when lost one life
 void Penelope::decrementLives(){
-    getWorld()->decLives();
     Actor::decrementLives();
+    getWorld()->decLives();
     
 }
 
 
 
 void Penelope:: useVaccine(){
-    if ( num_vaccines > 0) num_vaccines-=1;
+    if ( num_vaccines > 0){
+        num_vaccines-=1;
+        cure_self();
+    }
 }
 void Penelope:: fireFlame(){
-    if ( num_flamethrower > 0) num_flamethrower-=1;
+    if ( num_flamethrower > 0){
+        num_flamethrower-=1;
+        getWorld()->playerFireFlame();
+    }
 }
 void Penelope:: dropLandMine(){
-    if ( num_landmines > 0) num_landmines-=1;
+    if ( num_landmines > 0) {
+        num_landmines-=1;
+        getWorld()->playerDropLandmine();
+    }
 }
 
 
@@ -222,18 +241,62 @@ void DestructiveActors::handleOverlap(){
 }
 
 
-//----------------Pit-------------------------------------------------
+//------------------------Pit-------------------------------------------------
 Pit::Pit(int imageID, double startX, double startY,StudentWorld* world):DestructiveActors(imageID,startX,startY,world){}
 
 //void Pit::handleOverlap(){
 //
 //}
 
-//----------------Flame-----------------------------------------------
-Flame::Flame(int imageID, double startX, double startY,StudentWorld* world, Direction dir):DestructiveActors(imageID,startX,startY,world,dir){}
-//void Flame::handleOverlap(){
-//
-//}
+//---------------------------Flame---------------------------------------------
+Flame::Flame(int imageID, double startX, double startY,StudentWorld* world, Direction dir):DestructiveActors(imageID,startX,startY,world,dir){ my_remaingTick = 2;}
+
+void Flame::handleOverlap(){
+    if ( my_remaingTick == 0){
+        decrementLives();
+        return;
+    }
+    DestructiveActors::handleOverlap();
+    my_remaingTick--;
+}
+//-----------------------------Landmine-----------------------------------------
+
+Landmine:: Landmine(int imageID, double startX, double startY,StudentWorld* world, Direction dir, int depth, double size):Actor(imageID,startX,startY,world,dir,depth,size){
+    safety_count=30;
+    isActive = false;
+}
+
+void Landmine::decrementSafetyCount() {
+    if(safety_count==0){
+        isActive = true;
+        return;
+    }
+    safety_count--;
+}
+
+void Landmine::decrementLives(){
+    if(isAlive()){
+        Actor::decrementLives();
+        getWorld()->landMineExplodes(this);
+    }
+}
+void Landmine::doSomething(){
+    if(!isAlive()) return;
+    if(!isActive){
+        decrementSafetyCount();
+        return;
+    }
+    handleOverlap();
+}
+
+void Landmine::handleOverlap(){
+    bool overlaped = getWorld()->landMineCheckOverlap(this);
+    if ( overlaped ){
+        Actor::decrementLives();
+    }
+}
+
+
 //TODO: CITIZEN CLASS NEEDS TO OVERRIDE ISCITIZEN
 //      implement playSoundWhenInfected
 //        play zombie born

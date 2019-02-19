@@ -10,9 +10,18 @@ using namespace std;
 // Students:  Add code to this file, StudentWorld.cpp, Actor.h, and Actor.cpp
 class Actor;
 class Penelope;
+// the following two constants is used to distinguish
+// Flame and actors
+// Exit can be moved onto but will block fire
+const int FIRE = 100;
+const int MOVE = 200;
+
 class StudentWorld : public GameWorld
+
 {
 public:
+
+    
     StudentWorld(std::string assetPath);
     virtual ~StudentWorld();
     virtual int init();
@@ -20,22 +29,27 @@ public:
     virtual void cleanUp();
     
 
-    bool moveOk(Actor* actor,double x, double y) const;
+    bool allowedToGoto(double destiX, double destiY,int moveOrFire) const;
    
 //  The following three method will be called
 //  by goodies to update player's goodie number
     void playerPickUpVacGoodie();
     void playerPickUpLandGoodie();
     void playerPickUpGasCan();
-
+   
     
+    void playerFireFlame();
+    void playerDropLandmine();
 //    Actors checkoverlap during doSomething
     void exitCheckOverlap(Actor* exit);
     bool goodiesCheckOverlap(Actor* goodie);
     void destructiveCheckOverlap(Actor* destructive);
-    
+    bool landMineCheckOverlap(Actor* landMine);
+    void landMineExplodes(Actor* landmine);
 private:
-    //decrement numOfCitizen by 1
+
+    bool createFrame(double x, double y,int direction);
+
     void citizenDied();
     void citizenSaved();
     void citizenInfected();

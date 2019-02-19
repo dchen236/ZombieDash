@@ -16,12 +16,12 @@ public:
     bool isAlive() const;
     virtual void decrementLives();
 //    only actors derived from infectable actors are infectable
-//
     virtual bool infectable() const{return false;}
-//    bool isPenelope() const{ return (infectable() && !isCitizen());}
-    //    most actors are not damagable except for walls,exit
+
+//    most actors are not damagable except for walls and exit
     virtual bool damagable() const{return true;}
-    virtual bool willBlockFlame() const { return false;}
+////  both walls and exit are damagable but exit
+//    virtual bool willBlockFlame() const { return false;}
 //    only infectable actors are allowed to leave
     virtual bool allowedToExit() const{return false;}
 //    default false, will be overriden by citizens
@@ -54,26 +54,21 @@ public:
 //    will be called by exit
     bool allowedToExit() const { return true; } // not virtual
     
+    virtual void doSometing();
+    void cure_self();
     
-    //  unique functions
-  //  bool isInfected() const{ return infected;}// not const may change infected status
+    // used to determine whether actor can useVaccine
+    // citizen and Penelope must redefine this method
+    virtual bool cureAble()=0;
     int infectionCount() const { return infection_count; }
-//   citizens and Penelope will play different soud when infected
-  //  void setToInfected() const{ return }
-    void incrementInfectionCount();
     
     virtual bool canMoveOnTo() const { return false; }
 private:
-    // both of citizens and Penelope doesn't check
-    // for overlap
-    // citizens are submissive to be checked
-    // Penelope will define her own doSomething method
-    virtual void setInfection(){ infected = true; }
+
+    void incrementInfectionCount();
+    void setToInfected(){ infected = true; }
     virtual void handleOverlap()=0;
     void checkInfectedOrNot();
-    virtual void getInfected()=0;
-    // it is not virtual for now may be changed
-    StudentWorld* my_world;
     int infection_count;
     bool infected;
 };
@@ -87,7 +82,7 @@ public:
     virtual void doSomething();
 
     virtual void decrementLives();
-    
+    virtual bool cureAble() {return true;}
 //  unique functions
     int numVaccines() const{ return num_vaccines; }
     int numLandmines() const{ return num_landmines; }
@@ -102,7 +97,6 @@ public:
 
 private:
     virtual void handleOverlap();
-    virtual void getInfected();
     void getKeyAndPerform();
     int num_landmines;
     int num_flamethrower;
@@ -114,7 +108,7 @@ class Exit:public Actor{
 public:
     Exit(int imageID, double startX, double startY,StudentWorld* world, Direction dir = 0, int depth = 1, double size = 1.0);
     virtual bool canMoveOnTo() const { return true; }
-    virtual bool willBlockFlame() const { return true;}
+ //   virtual bool willBlockFlame() const { return true;}
 //    virtual void doSomething(); handled by abc
     virtual bool damagable() const{ return false; }
 private:
@@ -128,11 +122,12 @@ public:
     // do nothing
     virtual void doSomething(){}; // wall does nothing
     virtual bool damagable() const{ return false; }
-    virtual bool willBlockFlame() const { return true;}
+  //  virtual bool willBlockFlame() const { return true;}
     virtual bool canMoveOnTo() const { return false; }
 private:
     virtual void handleOverlap(){};
 };
+
 // ABC class
 class Goodie:public Actor{
 public:
@@ -140,7 +135,7 @@ public:
     virtual bool canMoveOnTo() const { return true; }
 private:
     virtual void handleOverlap();
-// derived goodies need to implement this method
+// derived goodies MUST implement this method
     virtual void goodiePickedUp()=0;
 };
 
@@ -164,19 +159,15 @@ public:
 private:
     virtual void goodiePickedUp();
 };
-
-// destructiveActors including pit,flame,vomit not including landmine
+// FIXME:: include vomit or not?
 // not sure if i WILL INCLUDING VOMIT yet, check back later
+// destructiveActors including pit,flame,vomit
+// will not including landmine
 // because landmine behaves quite differently
 class DestructiveActors:public Actor{
 public:
     DestructiveActors(int imageID, double startX, double startY,StudentWorld* world, Direction dir = 0, int depth = 0, double size = 1.0);
-    //virtual void doSomething();
-    
-    //virtual void decrementLives();
-
     virtual bool damagable() const{return false;}
-
     virtual bool canMoveOnTo() const { return true; }
 protected:
     virtual void handleOverlap();
@@ -185,26 +176,42 @@ protected:
 class Pit:public DestructiveActors{
 public:
     Pit(int imageID, double startX, double startY,StudentWorld* world);
-    //virtual void doSomething();
-    //virtual void decrementLives();
-private:
-    //virtual void handleOverlap();
 };
 
 class Flame:public DestructiveActors{
 public:
     Flame(int imageID, double startX, double startY,StudentWorld* world, Direction dir);
-    //virtual void doSomething();
-    
-    
-    //virtual void decrementLives();
-
 private:
-    //virtual void handleOverlap();
+    int my_remaingTick;
+    virtual void handleOverlap();
 };
 
 
-// land mine is danmageable
+class Landmine:public Actor{
+public:
+    Landmine(int imageID, double startX, double startY,StudentWorld* world, Direction dir = 0, int depth = 1, double size = 1.0);
+
+//    virtual void doSomething();
+    virtual void decrementLives();
+    virtual void doSomething();
+    virtual bool canMoveOnTo() const{ return true; }
+
+    //    By default this function does nothing
+    //    except for infectbale actors will redefine it
+
+    // virtual bool moveAble();
+private:
+    virtual void handleOverlap();
+    void decrementSafetyCount();
+    bool isActive;
+    int safety_count;
+};
+
+
+
+
+
+
 
 
 //TODO: CITIZEN CLASS NEEDS TO OVERRIDE ISCITIZEN
