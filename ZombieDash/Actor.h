@@ -14,14 +14,18 @@ public:
     virtual ~Actor(){};
     virtual void doSomething();
     bool isAlive() const;
+    // by default does nothing
+    // only infectableActors will override
+    // this method
+    virtual void setToInfected(){}
     virtual void decrementLives();
 //    only actors derived from infectable actors are infectable
     virtual bool infectable() const{return false;}
 
-//    most actors are not damagable except for walls and exit
+
     virtual bool damagable() const{return true;}
 ////  both walls and exit are damagable but exit
-//    virtual bool willBlockFlame() const { return false;}
+    virtual bool willBlockFlame() const { return false;}
 //    only infectable actors are allowed to leave
     virtual bool allowedToExit() const{return false;}
 //    default false, will be overriden by citizens
@@ -56,7 +60,7 @@ public:
     
     virtual void doSometing();
     void cure_self();
-    
+    virtual void setToInfected(){ infected = true; }
     // used to determine whether actor can useVaccine
     // citizen and Penelope must redefine this method
     virtual bool cureAble()=0;
@@ -66,7 +70,6 @@ public:
 private:
 
     void incrementInfectionCount();
-    void setToInfected(){ infected = true; }
     virtual void handleOverlap()=0;
     void checkInfectedOrNot();
     int infection_count;
@@ -91,12 +94,13 @@ public:
     void fireFlame();
     void dropLandMine();
     
-    void pickUpLandmines(){num_landmines+=1; };
+    void pickUpLandmines(){num_landmines+=2; };
     void pickUpVaccines(){ num_vaccines+=1; };
     void pickUpFlamethrower(){ num_flamethrower+=5; };
 
 private:
-    virtual void handleOverlap();
+//    Penelope doesn't handleOverlap herself
+    virtual void handleOverlap(){};
     void getKeyAndPerform();
     int num_landmines;
     int num_flamethrower;
@@ -108,7 +112,7 @@ class Exit:public Actor{
 public:
     Exit(int imageID, double startX, double startY,StudentWorld* world, Direction dir = 0, int depth = 1, double size = 1.0);
     virtual bool canMoveOnTo() const { return true; }
- //   virtual bool willBlockFlame() const { return true;}
+    virtual bool willBlockFlame() const { return true;}
 //    virtual void doSomething(); handled by abc
     virtual bool damagable() const{ return false; }
 private:
@@ -122,7 +126,7 @@ public:
     // do nothing
     virtual void doSomething(){}; // wall does nothing
     virtual bool damagable() const{ return false; }
-  //  virtual bool willBlockFlame() const { return true;}
+    virtual bool willBlockFlame() const { return true;}
     virtual bool canMoveOnTo() const { return false; }
 private:
     virtual void handleOverlap(){};
@@ -209,7 +213,15 @@ private:
 
 
 
+class Vomit:public Actor{
+    Vomit(int imageID, double startX, double startY,StudentWorld* world, Direction dir);
+    virtual bool damagable() const{ return false; }
+    virtual bool canMoveOnTo() const{ return true; }
 
+private:
+    virtual void handleOverlap() = 0;
+    int my_remainingTick;
+};
 
 
 

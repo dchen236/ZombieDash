@@ -44,7 +44,13 @@ int StudentWorld::init()
     return status;
 }
 
-// move function
+// if levelFinished return level finished status immediately
+// if player is dead return player died status immediately
+// otherwise ask player to doSomething
+// then ask other actors to doSomething
+// delete all the dead actors
+// update game status label
+// return continue game status
 int StudentWorld::move()
 {
     //check the status of player
@@ -81,8 +87,11 @@ void StudentWorld::cleanUp()
     if ( my_actors.empty() && player == nullptr) cerr<<"All memory freed"<<endl;
 }
 
-// this function determine whether an actor
-// is allowed to move to here
+// two cases for this method
+// if moveOrFire is MOVE
+// check if there is a actor (wall for examle) that will block the move
+// if moveOrFire is Fire
+// check if there is an actor that will block flame exit for example
 bool StudentWorld::allowedToGoto(double destiX,double destiY,int moveOrFire) const{
     auto it = my_actors.begin();
     while (it != my_actors.end() ){
@@ -94,7 +103,7 @@ bool StudentWorld::allowedToGoto(double destiX,double destiY,int moveOrFire) con
                 }
 //                case flame wants to fire
                 else if(moveOrFire == FIRE){
-                    if( !(*it)->damagable()){
+                    if( (*it)->willBlockFlame()){
                         return false;
                     }
                 }
@@ -104,7 +113,7 @@ bool StudentWorld::allowedToGoto(double destiX,double destiY,int moveOrFire) con
     return true;
 }
 
-
+// the following function with descriptive title won't be commented
 void StudentWorld::playerPickUpVacGoodie(){
     player->pickUpVaccines();
 }
@@ -114,10 +123,23 @@ void StudentWorld::playerPickUpLandGoodie(){
 void StudentWorld::playerPickUpGasCan(){
     player->pickUpFlamethrower();
 }
-
 void StudentWorld::playerDropLandmine(){
     Landmine* landmine = new Landmine(IID_LANDMINE, player->getX(), player->getY(), this);
     my_actors.push_back(landmine);
+}
+
+// this function will be called by zombies
+// to determine whether to vomit or not
+// return true if their is an infectable actor will overlap with vomit
+bool StudentWorld::zombieComputeVomit(double vomitX,double vomitY){
+    for(auto actorPtr:my_actors){
+        if(actorPtr->infectable()){
+            if (overlapWith(vomitX, vomitY, actorPtr->getX(), actorPtr->getY())){
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 // This is the helper function that create a flame object
@@ -133,6 +155,7 @@ bool StudentWorld::createFrame(double x, double y,int direction) {
     return false;
 }
 
+// method will be called when user press space
 void StudentWorld::playerFireFlame(){
     playSound(SOUND_PLAYER_FIRE);
     Direction d = player->getDirection();
@@ -170,8 +193,12 @@ void StudentWorld::playerFireFlame(){
         }
     }
 }
+
+// This function will be called by exit
+// if citizens reach to exit, citizenSaved method (downbelow ) will be called
+// if player reach to exit, setLevelFinished will be called
+// setLevelFinished will check whether all citizens are saved
 void StudentWorld::exitCheckOverlap(Actor* exit){
-    
     list<Actor*> overlapedActors = checkOverlap(exit);
         for(auto actorPtr:overlapedActors){
             if ( actorPtr->isCitizen()){
@@ -184,7 +211,11 @@ void StudentWorld::exitCheckOverlap(Actor* exit){
             }
         }
 }
-
+//  return true if player pick up goodie
+//  destroye goodie increase the score
+//  playsound
+//  inform goodie they are picked up
+//  goodie will then inform player to increase the number of goodies
 bool StudentWorld::goodiesCheckOverlap(Actor* goodie){
     if (overlapWithPlayer(goodie)){
         goodie->decrementLives();
@@ -194,7 +225,8 @@ bool StudentWorld::goodiesCheckOverlap(Actor* goodie){
     }
     return false;
 }
-
+// destructive actors will call this method
+// to destroye damagable actors that overlaps with it
 void StudentWorld::destructiveCheckOverlap(Actor *destructive){
     list<Actor*> overlapedActors = checkOverlap(destructive);
     for(auto actorPtr:overlapedActors){
@@ -206,6 +238,9 @@ void StudentWorld::destructiveCheckOverlap(Actor *destructive){
         }
     }
 }
+// this method will be called when landMineExplodes
+// either because it's destroyed by flames
+// or overlapping with damagable actors
 void StudentWorld::landMineExplodes(Actor* landmine){
     double startX = landmine->getX()-SPRITE_WIDTH;
     double startY = landmine->getY()+SPRITE_HEIGHT;
@@ -221,6 +256,9 @@ void StudentWorld::landMineExplodes(Actor* landmine){
     my_actors.push_back(pit);
     playSound(SOUND_LANDMINE_EXPLODE);
 }
+// this function will be called by landmind during it's turn to doSomething
+// call landMineExplodes function damagable actors overlaps with it
+// it will decrement that actor's life by one
 bool StudentWorld::landMineCheckOverlap(Actor *landmine){
     list<Actor*> overlapedActors = checkOverlap(landmine);
     for(auto actorPtr:overlapedActors){
@@ -236,6 +274,45 @@ bool StudentWorld::landMineCheckOverlap(Actor *landmine){
     return false;
 }
 
+// vomit will infect infectable actors including citizens and player
+// when overlapping with them
+void StudentWorld::vomitCheckOverlap(Actor* vomit){
+    list<Actor*> overlapedActors = checkOverlap(vomit);
+    for(auto actorPtr:overlapedActors){
+        if( actorPtr->infectable() ){
+            actorPtr->setToInfected();
+            if( actorPtr->isCitizen()){
+                playSound(SOUND_CITIZEN_INFECTED);
+            }
+        }
+    }
+}
+
+//FIXME: implement this method
+// This function will be called by both Penelope
+// and citizens when they turn into zombie
+// create a zombieObject at this location
+// play zombie burn sound
+// won't update score, score will be handled by citizenTurnIntoZombie()
+void StudentWorld::actorTurnIntoZombie(Actor* actor){
+    if ( actor->isCitizen()){
+        citizenTurnIntoZombie();
+    }
+    // don't set play to die, when player inform world, it's already dead
+    // TODO: create Zombie at actor's location !!!!!!
+   
+    playSound(SOUND_ZOMBIE_BORN);
+}
+
+// This private function will be called by actorTurnIntoZombie
+// if actor is a citizen
+// when citizen turns into zombie
+// update state label
+// decrement the number of citizens in the world
+void StudentWorld::citizenTurnIntoZombie(){
+    increaseScore(-1000);
+    decrementCitizen();
+}
 
 // This function will be called by exit when player reach to exit
 // if no citizen left
@@ -252,16 +329,15 @@ void StudentWorld::setLevelFinished(){
 void StudentWorld::decrementCitizen(){
     num_citizens--;
 }
+// update state label
+// play citizen die sound
+// decrements the number of citizens in the world
 void StudentWorld::citizenDied(){
     increaseScore(-1000);
     decrementCitizen();
     playSound(SOUND_CITIZEN_DIE);
 }
-void StudentWorld::citizenInfected(){
-    increaseScore(-1000);
-    decrementCitizen();
-    playSound(SOUND_CITIZEN_INFECTED);
-}
+
 void StudentWorld::citizenSaved(){
     increaseScore(500);
     decrementCitizen();

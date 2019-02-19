@@ -30,33 +30,36 @@ public:
     
 
     bool allowedToGoto(double destiX, double destiY,int moveOrFire) const;
-   
-//  The following three method will be called
-//  by goodies to update player's goodie number
+//  player activities
     void playerPickUpVacGoodie();
     void playerPickUpLandGoodie();
     void playerPickUpGasCan();
-   
-    
     void playerFireFlame();
     void playerDropLandmine();
+    
+//    zombie activities
+    bool zombieComputeVomit(double voimtX,double vomitY);
+    
 //    Actors checkoverlap during doSomething
     void exitCheckOverlap(Actor* exit);
     bool goodiesCheckOverlap(Actor* goodie);
     void destructiveCheckOverlap(Actor* destructive);
     bool landMineCheckOverlap(Actor* landMine);
     void landMineExplodes(Actor* landmine);
+    void vomitCheckOverlap(Actor* vomit);
+    void actorTurnIntoZombie(Actor* actor);
+    
 private:
 
     bool createFrame(double x, double y,int direction);
-
+    void citizenTurnIntoZombie();
     void citizenDied();
     void citizenSaved();
-    void citizenInfected();
+
     void decrementCitizen();
     list<Actor*> checkOverlap(Actor* requestActor);
     
-    void handleOverlap(list<Actor*> actors,Actor* overlapedWith);
+//    void handleOverlap(list<Actor*> actors,Actor* overlapedWith);
     bool overlapWithPlayer(Actor* requestActor) const;
     void setLevelFinished();
     bool boundingBoxOverlap(double x1,double y1,double x2, double y2y) const;

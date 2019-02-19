@@ -9,7 +9,7 @@
 
 // constructor
 Actor::Actor(int imageID, double startX, double startY,StudentWorld* world,Direction dir, int depth , double size):GraphObject(imageID,startX,startY,dir,depth,size){
-    num_lives = 1; // default is 1
+    num_lives = 1;
     my_world = world;
 }
 // all the actors except for Penelope will checkOverlap
@@ -21,9 +21,7 @@ void Actor::doSomething(){
     }
 }
 
-// this function will be explicitly used
-// by Penelope object to set her num_lives to 3
-// 
+
 bool Actor::isAlive() const{
     return num_lives > 0;
 }
@@ -32,7 +30,9 @@ bool Actor::isAlive() const{
 // actors derived from destructive objects
 // and infectable actors themselves
 void Actor::decrementLives(){
-    num_lives-=1;
+    if(isAlive()){
+     num_lives-=1;
+    }
 }
 
 
@@ -46,7 +46,9 @@ InfectableActor::InfectableActor(int imageID, double startX, double startY, Stud
 }
 
 void InfectableActor::doSometing(){
-    checkInfectedOrNot();
+    if (isAlive()){
+      checkInfectedOrNot();
+    }
 }
 
 void InfectableActor::cure_self(){
@@ -61,6 +63,7 @@ void InfectableActor::cure_self(){
  void InfectableActor::incrementInfectionCount(){
      if ( infection_count == 500){
          decrementLives();
+         getWorld()->actorTurnIntoZombie(this);
          return;
      }
      infection_count+=1;
@@ -85,23 +88,17 @@ Penelope::Penelope(int imageID, double startX, double startY, StudentWorld* worl
 
 // FIXME: check comment below
 void Penelope::doSomething(){
-    if(!isAlive()) return;
 // at this point Penelope is alive
 // she should check if she's infected first
     InfectableActor::doSometing();
+    // it is possible that Penelope is dead by turning into zombie
+    if (!isAlive()) return;
     getKeyAndPerform();
     // right now Actor's doSomething only
     // check overlap()
     // if Penelope's handleOverlap does nothing eventually
     // remember to remove this line of code
   //  Actor::doSomething();
-}
-
-
-
-// FIXME: determine whether to keep this method or not
-void Penelope::handleOverlap(){
-    
 }
 
 
@@ -147,12 +144,11 @@ void Penelope::getKeyAndPerform() {
 
 // Penelope needs to inform studentWorld when lost one life
 void Penelope::decrementLives(){
-    Actor::decrementLives();
-    getWorld()->decLives();
-    
+    if (isAlive()){
+        Actor::decrementLives();
+        getWorld()->decLives();
+    }
 }
-
-
 
 void Penelope:: useVaccine(){
     if ( num_vaccines > 0){
@@ -295,8 +291,19 @@ void Landmine::handleOverlap(){
         Actor::decrementLives();
     }
 }
+//-----------------------------Vomit-------------------------------------
+Vomit:: Vomit(int imageID, double startX, double startY,StudentWorld* world, Direction dir):Actor(imageID,startX,startY,world,dir){
+    my_remainingTick = 2;
+}
 
-
+void Vomit::handleOverlap(){
+    if(my_remainingTick == 0 ){
+        decrementLives();
+        return;
+    }
+    getWorld()->vomitCheckOverlap(this);
+    my_remainingTick--;
+}
 //TODO: CITIZEN CLASS NEEDS TO OVERRIDE ISCITIZEN
 //      implement playSoundWhenInfected
 //        play zombie born
