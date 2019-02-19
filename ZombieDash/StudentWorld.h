@@ -2,6 +2,7 @@
 #define STUDENTWORLD_H_
 
 #include "GameWorld.h"
+#include "GameConstants.h"
 //#include "Actor.h"
 #include <string>
 #include <list>
@@ -15,6 +16,11 @@ class Penelope;
 // Exit can be moved onto but will block fire
 const int FIRE = 100;
 const int MOVE = 200;
+
+// used to distinush whether
+// it is dumb zombie or smart zombie
+const int DUMB = 1000;
+const int SMART = 2000;
 
 class StudentWorld : public GameWorld
 
@@ -36,10 +42,13 @@ public:
     void playerPickUpGasCan();
     void playerFireFlame();
     void playerDropLandmine();
+    void playerAttemtToLeave();
     
 //    zombie activities
     bool zombieComputeVomit(double voimtX,double vomitY);
-    
+    void zombieVomit(double vomitX,double vomitY,int dir);
+    void zombieBorn(double zombieX,double zombieY,int smartOrDumb);
+    void zombieDied(int score);
 //    Actors checkoverlap during doSomething
     void exitCheckOverlap(Actor* exit);
     bool goodiesCheckOverlap(Actor* goodie);
@@ -47,21 +56,23 @@ public:
     bool landMineCheckOverlap(Actor* landMine);
     void landMineExplodes(Actor* landmine);
     void vomitCheckOverlap(Actor* vomit);
-    void actorTurnIntoZombie(Actor* actor);
+
+    
+//    citizen activities
+    void citizenDied();
+    void citizenSaved();
     
 private:
 
     bool createFrame(double x, double y,int direction);
-    void citizenTurnIntoZombie();
-    void citizenDied();
-    void citizenSaved();
+
 
     void decrementCitizen();
     list<Actor*> checkOverlap(Actor* requestActor);
     
 //    void handleOverlap(list<Actor*> actors,Actor* overlapedWith);
     bool overlapWithPlayer(Actor* requestActor) const;
-    void setLevelFinished();
+    
     bool boundingBoxOverlap(double x1,double y1,double x2, double y2y) const;
     string generateStateText() const;
     bool overlapWith(double x1,double y1,double x2,double y2) const;

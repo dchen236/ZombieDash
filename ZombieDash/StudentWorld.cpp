@@ -128,19 +128,7 @@ void StudentWorld::playerDropLandmine(){
     my_actors.push_back(landmine);
 }
 
-// this function will be called by zombies
-// to determine whether to vomit or not
-// return true if their is an infectable actor will overlap with vomit
-bool StudentWorld::zombieComputeVomit(double vomitX,double vomitY){
-    for(auto actorPtr:my_actors){
-        if(actorPtr->infectable()){
-            if (overlapWith(vomitX, vomitY, actorPtr->getX(), actorPtr->getY())){
-                return true;
-            }
-        }
-    }
-    return false;
-}
+
 
 // This is the helper function that create a flame object
 // return true if flame is created and added to my_actors
@@ -201,14 +189,18 @@ void StudentWorld::playerFireFlame(){
 void StudentWorld::exitCheckOverlap(Actor* exit){
     list<Actor*> overlapedActors = checkOverlap(exit);
         for(auto actorPtr:overlapedActors){
-            if ( actorPtr->isCitizen()){
-                actorPtr->decrementLives();
-                citizenSaved();
+            if(actorPtr->allowedToExit()){
+                actorPtr->leaveExit();
             }
-            //it is penelope since they are the only types allowed to leave
-            else if ( actorPtr->allowedToExit()){
-                setLevelFinished();
-            }
+//            if ( actorPtr->isCitizen()){
+//                actorPtr->decrementLives();
+//                citizenSaved();
+//            }
+//            //it is penelope since they are the only types allowed to leave
+//            else if ( actorPtr->allowedToExit()){
+//                playerAttemtToLeave();
+//            }
+           
         }
 }
 //  return true if player pick up goodie
@@ -232,9 +224,6 @@ void StudentWorld::destructiveCheckOverlap(Actor *destructive){
     for(auto actorPtr:overlapedActors){
         if ( actorPtr->damagable() ){
             actorPtr->decrementLives();
-            if ( actorPtr->isCitizen()){
-                citizenDied();
-            }
         }
     }
 }
@@ -265,9 +254,6 @@ bool StudentWorld::landMineCheckOverlap(Actor *landmine){
         if ( actorPtr->damagable() ){
             actorPtr->decrementLives();
             landMineExplodes(landmine);
-            if ( actorPtr->isCitizen()){
-                citizenDied();
-            }
             return true;
         }
     }
@@ -281,49 +267,74 @@ void StudentWorld::vomitCheckOverlap(Actor* vomit){
     for(auto actorPtr:overlapedActors){
         if( actorPtr->infectable() ){
             actorPtr->setToInfected();
-            if( actorPtr->isCitizen()){
-                playSound(SOUND_CITIZEN_INFECTED);
-            }
         }
     }
 }
 
-//FIXME: implement this method
-// This function will be called by both Penelope
-// and citizens when they turn into zombie
-// create a zombieObject at this location
-// play zombie burn sound
-// won't update score, score will be handled by citizenTurnIntoZombie()
-void StudentWorld::actorTurnIntoZombie(Actor* actor){
-    if ( actor->isCitizen()){
-        citizenTurnIntoZombie();
-    }
-    // don't set play to die, when player inform world, it's already dead
-    // TODO: create Zombie at actor's location !!!!!!
-   
-    playSound(SOUND_ZOMBIE_BORN);
-}
-
-// This private function will be called by actorTurnIntoZombie
-// if actor is a citizen
-// when citizen turns into zombie
-// update state label
-// decrement the number of citizens in the world
-void StudentWorld::citizenTurnIntoZombie(){
-    increaseScore(-1000);
-    decrementCitizen();
-}
 
 // This function will be called by exit when player reach to exit
 // if no citizen left
 // return true
 // otherwise return false
-void StudentWorld::setLevelFinished(){
-    cout<<"num citizens is "<< num_citizens<<endl;
+void StudentWorld::playerAttemtToLeave(){
+    cerr<<"num citizens is "<< num_citizens<<endl;
     if (num_citizens == 0){
         levelFinished = true;
     }
 }
+
+
+// TODO:
+// implement zombieComputeVomit()
+// implement zombieBorn()
+// create a zombie actor at the given location
+// play sound zombie born
+// this function will be called by zombies
+// to determine whether to vomit or not
+// return true if their is an infectable actor will overlap with vomit
+bool StudentWorld::zombieComputeVomit(double vomitX,double vomitY){
+    for(auto actorPtr:my_actors){
+        if(actorPtr->infectable()){
+            if (overlapWith(vomitX, vomitY, actorPtr->getX(), actorPtr->getY())){
+                return true;
+            }
+        }
+    }
+    return false;
+}
+// This method won't check bounding box
+// because nothing will block the creation of vomit from the spec
+void StudentWorld::zombieVomit(double vomitX, double vomitY,int dir){
+    playSound(SOUND_ZOMBIE_VOMIT);
+    Vomit* vomit = new Vomit(IID_VOMIT, vomitX, vomitY, this, dir);
+    my_actors.push_back(vomit);
+    
+}
+
+void StudentWorld::zombieBorn(double zombieX, double zombieY,int smartOrDumb){
+    // create A ZOMBIE AT THIS LOCATION
+    if( smartOrDumb == SMART){
+        // create a smart zombie
+    }
+    else if ( smartOrDumb == DUMB){
+        // create a dumb zombie
+    }
+    playSound(SOUND_ZOMBIE_BORN);
+}
+// TODO:
+// implement the logic of creating goodie
+void StudentWorld::zombieDied(int score){
+    increaseScore(score);
+    playSound(SOUND_ZOMBIE_DIE);
+    
+    // create a goodie here
+    if ( score == DUMB){
+        // implement randomlyDropGoodie function
+    }
+    
+}
+
+
 
 //--------------- private helper functions ------------------------------
 void StudentWorld::decrementCitizen(){
@@ -337,7 +348,10 @@ void StudentWorld::citizenDied(){
     decrementCitizen();
     playSound(SOUND_CITIZEN_DIE);
 }
-
+// This function will be called when citizens overlap with exit
+// update state label
+// decrement the number of citizens in the wrold
+// play citizen saved sound
 void StudentWorld::citizenSaved(){
     increaseScore(500);
     decrementCitizen();
@@ -345,7 +359,8 @@ void StudentWorld::citizenSaved(){
     
 }
 
-
+//This function will be called by exit
+// to determine whether player has reached to exit
 bool StudentWorld::overlapWithPlayer(Actor *requestActor) const{
     double x1 = requestActor->getX();
     double y1 = requestActor->getY();
@@ -465,10 +480,12 @@ int StudentWorld::createActors(){
                         my_actors.push_back(wall);
                     }
                         break;
-                    case Level::citizen:
-                    {
-                        num_citizens+=1;
-                    }
+                        
+                        //                        FIXME: uncomment this line
+//                    case Level::citizen:
+//                    {
+//                        num_citizens+=1;
+//                    }
                         break;
                     case Level::exit:
                     {
@@ -497,6 +514,9 @@ int StudentWorld::createActors(){
                         my_actors.push_back(pit);
                     }
                         break;
+                        
+                        //                FIXME: !!!!!!!! TEST VOMIT ONLY
+
                     default:
                         break;
                 }
