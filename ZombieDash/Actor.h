@@ -51,7 +51,7 @@ public:
     int infectionCount() const { return infection_count; }
     virtual bool canMoveOnTo() const { return false; }
 //  derived classe needs to define this method
-    virtual bool cureAble()=0;
+    virtual bool cureAble() const = 0;
 private:
     virtual void infectableActorReachToExit()=0;
     virtual void turnIntoZombie()=0;
@@ -69,7 +69,7 @@ public:
     void extracted();
     virtual void doSomething();
     virtual void decrementLives();
-    virtual bool cureAble() {return true;}
+    virtual bool cureAble() const{return true;}
 //  get methods
     int numVaccines() const{ return num_vaccines; }
     int numLandmines() const{ return num_landmines; }
@@ -206,5 +206,29 @@ private:
 
 //TODO: ZOMBIE ABC CLASS CAN BE MOVED ONTO FALSE optional
 
+class Zombie:public Actor{
+public:
+    Zombie(int imageID, double startX, double startY,StudentWorld* world);
+    virtual void decrementLives();
+    virtual bool canMoveOnTo() const{return false;}
+    
+private:
+    virtual void zombieStrategy()=0;
+    virtual void zombieInformWorldWhenDied() const=0;
+    bool vomitOrNot() const;
+    bool zombieMakeAmove();
+    virtual void handleOverlap();
+    int my_movementPlan;
+// flip paralyzed status each tick
+    void flipParalyzed(){ paralyzed = (!paralyzed); }
+    bool paralyzed;
+};
 
+class DumbZombie:public Zombie{
+public:
+    DumbZombie(int imageID, double startX, double startY,StudentWorld* world);
+private:
+    virtual void zombieStrategy();
+    virtual void zombieInformWorldWhenDied() const;
+};
 #endif // ACTOR_H_

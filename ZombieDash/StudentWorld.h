@@ -17,62 +17,47 @@ class Penelope;
 const int FIRE = 100;
 const int MOVE = 200;
 
-// used to distinush whether
-// it is dumb zombie or smart zombie
-const int DUMB = 1000;
-const int SMART = 2000;
-
 class StudentWorld : public GameWorld
 
 {
 public:
-
-    
     StudentWorld(std::string assetPath);
     virtual ~StudentWorld();
     virtual int init();
     virtual int move();
     virtual void cleanUp();
-    
 
-    bool allowedToGoto(double destiX, double destiY,int moveOrFire) const;
+    bool allowedToGoto( double destiX,double destiY,int moveOrFire) const;
 //  player activities
     void playerPickUpVacGoodie();
     void playerPickUpLandGoodie();
     void playerPickUpGasCan();
     void playerFireFlame();
     void playerDropLandmine();
-    void playerAttemtToLeave();
-    
+    void playerAtemptToLeave();
 //    zombie activities
     bool zombieComputeVomit(double voimtX,double vomitY);
     void zombieVomit(double vomitX,double vomitY,int dir);
-    void zombieBorn(double zombieX,double zombieY,int smartOrDumb);
-    void zombieDied(int score);
-//    Actors checkoverlap during doSomething
+    void zombieBorn(double zombieX,double zombieY);
+    bool zombieMakeMove(Actor* zombie,double destiX,double destiY) const;
+//    citizen activities
+    void citizenDied();
+    void citizenSaved();
+    void zombieDied(double dumbX=-1,double dumbY=-1);
+//    unmovable actors checkoverlap during doSomething
     void exitCheckOverlap(Actor* exit);
     bool goodiesCheckOverlap(Actor* goodie);
     void destructiveCheckOverlap(Actor* destructive);
     bool landMineCheckOverlap(Actor* landMine);
     void landMineExplodes(Actor* landmine);
     void vomitCheckOverlap(Actor* vomit);
-
-    
-//    citizen activities
-    void citizenDied();
-    void citizenSaved();
-    
 private:
-
+    void createSmartZombie(double x,double y);
+    void createDumbZombie(double x,double y);
     bool createFrame(double x, double y,int direction);
-
-
     void decrementCitizen();
     list<Actor*> checkOverlap(Actor* requestActor);
-    
-//    void handleOverlap(list<Actor*> actors,Actor* overlapedWith);
-    bool overlapWithPlayer(Actor* requestActor) const;
-    
+    bool overlapWithPlayer(double x,double y) const;
     bool boundingBoxOverlap(double x1,double y1,double x2, double y2y) const;
     string generateStateText() const;
     bool overlapWith(double x1,double y1,double x2,double y2) const;
@@ -82,7 +67,6 @@ private:
     int createActors();
     int num_citizens;
     bool levelFinished;
-   // bool citizenSaved;
     Penelope* player;
     list<Actor*> my_actors;
 };

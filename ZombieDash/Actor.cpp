@@ -99,12 +99,12 @@ Penelope::Penelope(int imageID, double startX, double startY, StudentWorld* worl
 // so I will just create a dumb zombie
 void Penelope::turnIntoZombie(){
     decrementLives();
-    getWorld()->zombieBorn(getX(), getY(),DUMB);
+    getWorld()->zombieBorn(getX(), getY());
 }
 // Penelope will attem to leave by informing studentworld
 // if no citizens left, level finishes
 void Penelope::infectableActorReachToExit(){
-    getWorld()->playerAttemtToLeave();
+    getWorld()->playerAtemptToLeave();
 }
 // FIXME: check comment below
 void Penelope::doSomething(){
@@ -386,9 +386,129 @@ void Vomit:: handleOverlap(){
 
 
 
+//------------------------Zombie----------------------------------------
+// zombie's paralyzed status starts with false
+Zombie::Zombie(int imageID, double startX, double startY,StudentWorld* world):Actor(imageID,startX,startY,world){
+    my_movementPlan = 0;
+    paralyzed = false;
+    
+}
+// Zombie will call ask studentWorld to
+// check if there is an infecable actor overlaps with its vomit
+// if studentWorld return true
+// 1/3 chance zombie will vomit and return true indicate they did vomit
+// so that doSomething return immediately
+bool Zombie::vomitOrNot() const{
+    Direction dir = getDirection();
+    double vomitX = getX();
+    double vomitY = getY();
+    switch (dir) {
+        case left:
+            vomitX -= SPRITE_WIDTH;
+            break;
+        case right:
+            vomitX += SPRITE_WIDTH;
+            break;
+        case up:
+            vomitY += SPRITE_HEIGHT;
+            break;
+        case down:
+            vomitY -= SPRITE_HEIGHT;
+        default:
+            break;
+    }
+    StudentWorld * world = getWorld();
+    bool vomitOverlap = world->zombieComputeVomit(vomitX, vomitY);
+    if(vomitOverlap){
+        int chance = randInt(1, 3);
+        cerr<<"vomit did overlap randInt is"<<chance<<endl;
+        if ( chance == 1){
+            cerr<<"zombie decided to vomit"<<endl;
+            world->zombieVomit(vomitX, vomitY, dir);
+            return true;
+        }
+    }
+    return false;
+}
+//  move one pixel away from where zombie is facing
+bool Zombie::zombieMakeAmove(){
+    Direction dir = getDirection();
+    double x = getX();
+    double y = getY();
+    switch (dir) {
+        case up:
+            y+=1;
+            break;
+        case down:
+            y-=1;
+            break;
+        case left:
+            x-=1;
+            break;
+        case right:
+            x+=1;
+            break;
+        default:
+            break;
+    }
+    if( getWorld()->zombieMakeMove(this, x, y) ){
+        moveTo(x,y);
+        return true;
+    }
+    return false;
+}
+
+// if zombie is not paralyzed
+// decide vomit or not
+// if zombie did vomit method should return immediately
+// doing nothing more this tick
+// otherwise make a new movement play if current plan is 0
+// zombieStrategy NEEDS to be implemented by derived classes (pure virtual)
+// perform a move adjust movement plan
+// based on the status of movement returned from student world
+void Zombie::handleOverlap(){
+    if(!paralyzed){
+        bool didVomit = vomitOrNot();
+        if (didVomit) return;
+        if (my_movementPlan == 0){
+            // decide a movement distance randomly
+            my_movementPlan = randInt(3, 10);
+            cerr<<"zombie new movement plan:"<<my_movementPlan<<endl;
+            zombieStrategy();
+        }
+        bool didMove = zombieMakeAmove();
+        if (didMove) my_movementPlan--; // decrement movement plan
+        else my_movementPlan=0; // blocked reset movement play
+    }
+    flipParalyzed();
+}
+// decrementLives by 1
+// zombieInformWorldWhenDied NEEDS to be
+// implemented by derived classes( pure virtual )
+void Zombie::decrementLives(){
+    Actor::decrementLives();
+    zombieInformWorldWhenDied();
+}
+
+//-------------------DumbZombie-----------------------------
+
+DumbZombie::DumbZombie(int imageID, double startX, double startY,StudentWorld* world):Zombie(imageID,startX,startY,world){}
+
+// dumb zombie will randomly
+// pick one directions out of four
+void DumbZombie::zombieStrategy(){
+    const int randDirction = randInt(0, 3);
+    cerr<<"direction is "<<randDirction*90<<endl;
+    setDirection(randDirction*90);
+}
+
+void DumbZombie::zombieInformWorldWhenDied() const{
+    getWorld()->zombieDied(getX(),getY());
+}
+// MARK: smart zombie doesn't pass its location when died
+// only dumb zombie will pass it to drop vaccine
 
 
-//TODO: ZOMBIE ABC CLASS CAN BE MOVED ONTO FALSE optional
 
 //Destructible object
 // when being created it must check
@@ -397,7 +517,7 @@ void Vomit:: handleOverlap(){
 //}
 
 // if (!canBeMovedOnTo && !damagable ) {
-    // can't be placed at this location
+//     can't be placed at this location
 //}
 
 

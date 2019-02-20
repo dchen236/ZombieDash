@@ -11,6 +11,8 @@
 #include <cmath>
 using namespace std;
 
+//TODO: implement createDumbZombie ()
+// Todo: switch level::citizen 
 
 GameWorld* createStudentWorld(string assetPath)
 {
@@ -92,10 +94,9 @@ void StudentWorld::cleanUp()
 // check if there is a actor (wall for examle) that will block the move
 // if moveOrFire is Fire
 // check if there is an actor that will block flame exit for example
-bool StudentWorld::allowedToGoto(double destiX,double destiY,int moveOrFire) const{
+bool StudentWorld::allowedToGoto( double destiX,double destiY,int moveOrFire) const{
     auto it = my_actors.begin();
     while (it != my_actors.end() ){
-        //        check if it refers to the  same actor
             if (boundingBoxOverlap(destiX, destiY, (*it)->getX(), (*it)->getY())) {
 //                case actors wants to move
                 if ( moveOrFire == MOVE && ( !((*it)->canMoveOnTo())) ){
@@ -113,6 +114,21 @@ bool StudentWorld::allowedToGoto(double destiX,double destiY,int moveOrFire) con
     return true;
 }
 
+bool StudentWorld::zombieMakeMove(Actor* zombie,double destiX,double destiY) const{
+    if( boundingBoxOverlap(destiX, destiY, player->getX(),player->getY())) { return false; }
+    auto it = my_actors.begin();
+    while (it != my_actors.end() ){
+        if ( *it != zombie ){
+            if ( boundingBoxOverlap(destiX, destiY, (*it)->getX(), (*it)->getY()) ) {
+                if ( !((*it)->canMoveOnTo()) ){
+                    return false;  
+                }
+            }
+        }
+        it++;
+    }
+    return true;
+}
 // the following function with descriptive title won't be commented
 void StudentWorld::playerPickUpVacGoodie(){
     player->pickUpVaccines();
@@ -136,7 +152,7 @@ void StudentWorld::playerDropLandmine(){
 // at requested position
 bool StudentWorld::createFrame(double x, double y,int direction) {
     if(allowedToGoto(x, y,FIRE)){
-        Flame* flame = new Flame(IID_FLAME, x, y, this,direction);
+        Flame* flame = new Flame(IID_FLAME, x,y, this,direction);
         my_actors.push_back(flame);
         return true;
     }
@@ -192,15 +208,6 @@ void StudentWorld::exitCheckOverlap(Actor* exit){
             if(actorPtr->allowedToExit()){
                 actorPtr->leaveExit();
             }
-//            if ( actorPtr->isCitizen()){
-//                actorPtr->decrementLives();
-//                citizenSaved();
-//            }
-//            //it is penelope since they are the only types allowed to leave
-//            else if ( actorPtr->allowedToExit()){
-//                playerAttemtToLeave();
-//            }
-           
         }
 }
 //  return true if player pick up goodie
@@ -209,7 +216,7 @@ void StudentWorld::exitCheckOverlap(Actor* exit){
 //  inform goodie they are picked up
 //  goodie will then inform player to increase the number of goodies
 bool StudentWorld::goodiesCheckOverlap(Actor* goodie){
-    if (overlapWithPlayer(goodie)){
+    if (overlapWithPlayer(goodie->getX(),goodie->getY())){
         goodie->decrementLives();
         increaseScore(50);
         playSound(SOUND_GOT_GOODIE);
@@ -276,7 +283,7 @@ void StudentWorld::vomitCheckOverlap(Actor* vomit){
 // if no citizen left
 // return true
 // otherwise return false
-void StudentWorld::playerAttemtToLeave(){
+void StudentWorld::playerAtemptToLeave(){
     cerr<<"num citizens is "<< num_citizens<<endl;
     if (num_citizens == 0){
         levelFinished = true;
@@ -284,15 +291,12 @@ void StudentWorld::playerAttemtToLeave(){
 }
 
 
-// TODO:
-// implement zombieComputeVomit()
-// implement zombieBorn()
-// create a zombie actor at the given location
-// play sound zombie born
-// this function will be called by zombies
+
+// this function will be called by zombie actors
 // to determine whether to vomit or not
-// return true if their is an infectable actor will overlap with vomit
+// return true if their will be an infectable actor overlap with the vomit
 bool StudentWorld::zombieComputeVomit(double vomitX,double vomitY){
+    if (overlapWithPlayer(vomitX,vomitY)) return true;
     for(auto actorPtr:my_actors){
         if(actorPtr->infectable()){
             if (overlapWith(vomitX, vomitY, actorPtr->getX(), actorPtr->getY())){
@@ -305,33 +309,48 @@ bool StudentWorld::zombieComputeVomit(double vomitX,double vomitY){
 // This method won't check bounding box
 // because nothing will block the creation of vomit from the spec
 void StudentWorld::zombieVomit(double vomitX, double vomitY,int dir){
-    playSound(SOUND_ZOMBIE_VOMIT);
     Vomit* vomit = new Vomit(IID_VOMIT, vomitX, vomitY, this, dir);
     my_actors.push_back(vomit);
-    
+    playSound(SOUND_ZOMBIE_VOMIT);
 }
+// TODO:
+// implement zombieBorn()
+// create a zombie actor at the given location
+// play sound zombie born
+// MARK::3/10 zombie is a smart zombie
 
-void StudentWorld::zombieBorn(double zombieX, double zombieY,int smartOrDumb){
+void StudentWorld::zombieBorn(double zombieX, double zombieY){
     // create A ZOMBIE AT THIS LOCATION
-    if( smartOrDumb == SMART){
-        // create a smart zombie
-    }
-    else if ( smartOrDumb == DUMB){
-        // create a dumb zombie
+    int smartOrDumb = randInt(1, 10);
+    if ( smartOrDumb <= 3){
+        cerr<<"random generator returns "<<smartOrDumb<<"smart zombie created"<<endl;
+        
+        createSmartZombie(zombieX, zombieY);
+        
+    }else{
+        cerr<<"random generator returns "<<smartOrDumb<<"zombie zombie created"<<endl;
+        createDumbZombie(zombieX,zombieY);
     }
     playSound(SOUND_ZOMBIE_BORN);
 }
+
+
 // TODO:
 // implement the logic of creating goodie
-void StudentWorld::zombieDied(int score){
-    increaseScore(score);
-    playSound(SOUND_ZOMBIE_DIE);
-    
-    // create a goodie here
-    if ( score == DUMB){
-        // implement randomlyDropGoodie function
+void StudentWorld::zombieDied(double dumbX,double dumbY){
+    if (dumbX == -1 ){
+        increaseScore(2000);
     }
-    
+    else{ // a dumb zombie died
+        increaseScore(1000);
+        int chance = randInt(1, 10);
+        cerr<<" dumb zombie died, random chance is "<<chance<<endl;
+        if ( chance == 1 ){
+            VaccineGoodie* vacc = new VaccineGoodie(IID_VACCINE_GOODIE, dumbX, dumbY, this);
+            my_actors.push_back(vacc);
+        }
+    }
+    playSound(SOUND_ZOMBIE_DIE);
 }
 
 
@@ -359,14 +378,12 @@ void StudentWorld::citizenSaved(){
     
 }
 
-//This function will be called by exit
-// to determine whether player has reached to exit
-bool StudentWorld::overlapWithPlayer(Actor *requestActor) const{
-    double x1 = requestActor->getX();
-    double y1 = requestActor->getY();
+//This function checks only whether request actor
+// is overlaping with Penelope or not
+bool StudentWorld::overlapWithPlayer(double x,double y ) const{
     double playerX = player->getX();
     double playerY = player->getY();
-    return overlapWith(x1, y1, playerX, playerY);
+    return overlapWith(x, y, playerX, playerY);
 }
 
 // This function will return a list of pointers point to actors
@@ -381,11 +398,7 @@ list<Actor*> StudentWorld::checkOverlap(Actor* requestActor){
     double x1 = requestActor->getX();
     double y1 = requestActor->getY();
     
-//    if (requestActor != player && overlapWith(x1, y1, player->getX(), player->getY())){
-//        overlapedActors.push_back(player);
-//    }
-    
-    if ( requestActor != player && overlapWithPlayer(requestActor)){
+    if ( requestActor != player && overlapWithPlayer(x1,y1)){
         overlapedActors.push_back(player);
     }
     
@@ -513,10 +526,15 @@ int StudentWorld::createActors(){
                         Pit* pit = new Pit(IID_PIT, startX, startY, this);
                         my_actors.push_back(pit);
                     }
+                    case Level::dumb_zombie:{
+                        createDumbZombie(startX, startY);
+                    }
                         break;
-                        
-                        //                FIXME: !!!!!!!! TEST VOMIT ONLY
-
+                    case Level::smart_zombie:{
+                        createSmartZombie(startX, startY);
+                    }
+                    
+                        break;
                     default:
                         break;
                 }
@@ -579,7 +597,7 @@ bool StudentWorld::boundingBoxOverlap(double x1,double y1,double x2, double y2) 
     double box2X = x2+SPRITE_WIDTH-1;
     double box1Y = y1+SPRITE_HEIGHT-1;
     double box2Y = y2+SPRITE_HEIGHT-1;
-    
+
     if (min(x1,x2) == x1){ // x1 is smaller
         if ( box1X >= x2) { // check if y overlaps
             if ( min(y1,y2) == y1){
@@ -604,3 +622,13 @@ bool StudentWorld::boundingBoxOverlap(double x1,double y1,double x2, double y2) 
 }
 
 
+void StudentWorld::createDumbZombie(double x, double y){
+    cerr<<"I am dumb"<<endl;
+    DumbZombie* zombie = new DumbZombie(IID_ZOMBIE, x, y, this);
+    my_actors.push_back(zombie);
+}
+
+void StudentWorld::createSmartZombie(double x, double y){
+    cerr<<"I am dumb"<<endl;
+
+}
