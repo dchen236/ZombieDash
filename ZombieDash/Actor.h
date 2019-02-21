@@ -11,7 +11,7 @@ class StudentWorld;
 class Actor:public GraphObject{
 public:
     Actor(int imageID, double startX, double startY,StudentWorld* world, Direction dir = 0, int depth = 0, double size = 1.0);
-    virtual ~Actor(){};
+    virtual ~Actor(){ std::cerr<<" I am freed" <<std::endl; }
     virtual void doSomething();
     bool isAlive() const;
     virtual void decrementLives();

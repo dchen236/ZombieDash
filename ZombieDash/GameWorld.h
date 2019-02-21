@@ -26,7 +26,7 @@ public:
     virtual int move() = 0;
     virtual void cleanUp() = 0;
 
-    void setGameStateText(std::string text);
+    void setGameStatText(std::string text);
 
     bool getKey(int& value);
     void playSound(int soundID);

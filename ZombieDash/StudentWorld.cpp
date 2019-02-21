@@ -1,7 +1,7 @@
 #include "StudentWorld.h"
+#include "GameWorld.h"
 #include "GameConstants.h"
 #include "Actor.h"
-#include "GameConstants.h"
 #include "Level.h"
 #include <string>
 #include <list>
@@ -25,9 +25,10 @@ StudentWorld::StudentWorld(string assetPath)
 : GameWorld(assetPath)
 {
     levelFinished = false;
-//    citizenSaved = false;
     num_citizens = 0;
     player = nullptr;
+    //my_actors is a list<Actor*>
+    // C++11 calls the default construtor automatically
 }
 
 StudentWorld::~StudentWorld(){
@@ -55,6 +56,10 @@ int StudentWorld::init()
 // return continue game status
 int StudentWorld::move()
 {
+    if(!player->isAlive()){
+        playSound(SOUND_PLAYER_DIE);
+        return GWSTATUS_PLAYER_DIED;
+    }
     //check the status of player
     if (levelFinished) {
         playSound(SOUND_LEVEL_FINISHED);
@@ -63,14 +68,10 @@ int StudentWorld::move()
     if(player->isAlive()){
         player->doSomething();
     }
-    if(!player->isAlive()){
-        playSound(SOUND_PLAYER_DIE);
-        return GWSTATUS_PLAYER_DIED;
-    }
-    
+
     askActorsDoSomething();
     deleteDiedActors();
-    setGameStateText(generateStateText());
+    setGameStatText(generateStateText());
     return GWSTATUS_CONTINUE_GAME;
 }
 
@@ -494,12 +495,12 @@ int StudentWorld::createActors(){
                     }
                         break;
                         
-                        //                        FIXME: uncomment this line
+                        //                        FIXME: uncomment these lines
 //                    case Level::citizen:
 //                    {
 //                        num_citizens+=1;
 //                    }
-                        break;
+                        //break;
                     case Level::exit:
                     {
                         Exit* exit = new Exit(IID_EXIT,startX,startY,this);
@@ -526,6 +527,7 @@ int StudentWorld::createActors(){
                         Pit* pit = new Pit(IID_PIT, startX, startY, this);
                         my_actors.push_back(pit);
                     }
+                        break;
                     case Level::dumb_zombie:{
                         createDumbZombie(startX, startY);
                     }
@@ -533,7 +535,6 @@ int StudentWorld::createActors(){
                     case Level::smart_zombie:{
                         createSmartZombie(startX, startY);
                     }
-                    
                         break;
                     default:
                         break;
@@ -576,12 +577,6 @@ void StudentWorld::deleteDiedActors(){
 // This function calculate whether two actors overlaps with each other
 // not their bounding box but their center x,y location
 bool StudentWorld::overlapWith(double x1,double y1,double x2,double y2) const{
-//    double centerX1 = x1+SPRITE_WIDTH/2;
-//    double centerY1 = y1+SPRITE_HEIGHT/2;
-//    double centerX2 = x2+SPRITE_WIDTH/2;
-//    double centerY2 = y2+SPRITE_HEIGHT/2;
-//    double diffX = centerX1-centerX2;
-//    double diffY = centerY1-centerY2;
     double diffX = x1-x2;
     double diffY = y1-y2;
     return (diffX*diffX+diffY*diffY <= 100);
@@ -609,8 +604,9 @@ bool StudentWorld::boundingBoxOverlap(double x1,double y1,double x2, double y2) 
         }
     }
     else{ // x2 is smaller
+        // rever box same logic as above
         if ( box2X >= x1){
-            if ( min(y1,y2) == y2){ // check if y overlaps same logic as above
+            if ( min(y1,y2) == y2){
                 if (box2Y >= y1) return true;
             }
             else{
@@ -630,5 +626,10 @@ void StudentWorld::createDumbZombie(double x, double y){
 
 void StudentWorld::createSmartZombie(double x, double y){
     cerr<<"I am dumb"<<endl;
-
+    // comment the followint lines
+    // after implemented smartZombie class
+    // the following are only used to silent the unused variable
+    // x and y warnning on cs32 seasnet server
+    x = x;
+    y = y;
 }
