@@ -5,13 +5,13 @@
 #include "Level.h"
 #include <string>
 #include <list>
+#include <map>
 #include <iostream> // defines the overloads of the << operator
 #include <sstream>  // defines the type std::ostringstream
 #include <iomanip>
 #include <cmath>
 using namespace std;
 
-//TODO: implement createDumbZombie ()
 // Todo: switch level::citizen 
 
 GameWorld* createStudentWorld(string assetPath)
@@ -314,12 +314,11 @@ void StudentWorld::zombieVomit(double vomitX, double vomitY,int dir){
     my_actors.push_back(vomit);
     playSound(SOUND_ZOMBIE_VOMIT);
 }
-// TODO:
-// implement zombieBorn()
-// create a zombie actor at the given location
-// play sound zombie born
-// MARK::3/10 zombie is a smart zombie
 
+// create a zombie actor at the passed in location
+// 3/10 chance the zombie is smart
+// 7/10 chance the zombie is dumb
+// play zombie born sound
 void StudentWorld::zombieBorn(double zombieX, double zombieY){
     // create A ZOMBIE AT THIS LOCATION
     int smartOrDumb = randInt(1, 10);
@@ -329,7 +328,7 @@ void StudentWorld::zombieBorn(double zombieX, double zombieY){
         createSmartZombie(zombieX, zombieY);
         
     }else{
-        cerr<<"random generator returns "<<smartOrDumb<<"zombie zombie created"<<endl;
+        cerr<<"random generator returns "<<smartOrDumb<<"dumn zombie created"<<endl;
         createDumbZombie(zombieX,zombieY);
     }
     playSound(SOUND_ZOMBIE_BORN);
@@ -339,6 +338,7 @@ void StudentWorld::zombieBorn(double zombieX, double zombieY){
 // TODO:
 // implement the logic of creating goodie
 void StudentWorld::zombieDied(double dumbX,double dumbY){
+    // default
     if (dumbX == -1 ){
         increaseScore(2000);
     }
@@ -347,6 +347,7 @@ void StudentWorld::zombieDied(double dumbX,double dumbY){
         int chance = randInt(1, 10);
         cerr<<" dumb zombie died, random chance is "<<chance<<endl;
         if ( chance == 1 ){
+            cerr<<" chance equals to one dumb zombie droped a vaccine goodie"<<endl;
             VaccineGoodie* vacc = new VaccineGoodie(IID_VACCINE_GOODIE, dumbX, dumbY, this);
             my_actors.push_back(vacc);
         }
@@ -354,9 +355,74 @@ void StudentWorld::zombieDied(double dumbX,double dumbY){
     playSound(SOUND_ZOMBIE_DIE);
 }
 
-
+Direction StudentWorld::smartZombieDetermineDirection(double zombieX, double zombieY) const{
+    
+    // use a map to store the distance between zombie and infectable actor
+    // the key is distance rather than actor* for two reasons
+    // 1. I don't have to implement comparator method in actor class
+    // 2. The keys( distance ) will be sorted in asending order
+    // since spec said if more than one actors are closet to zombie
+    // just pick one of them, we don't need to worry about duplicated distance
+    map<double,Actor*> distanceToActor;
+    double distanceToPlayer = calculateEuclideanDistance(player->getX(), player->getY(), zombieX, zombieY);
+    distanceToActor[distanceToPlayer] = player;
+    for(auto actorPtr:my_actors){
+        if ( actorPtr->infectable() ){
+            double distance = calculateEuclideanDistance(actorPtr->getX(), actorPtr->getY(), zombieX, zombieY);
+            distanceToActor[distance] = actorPtr;
+        }
+    }
+    auto firstPairInMap = distanceToActor.begin();
+    if (firstPairInMap == distanceToActor.end()){
+        cerr<<"This should not have happened"<<endl;
+        cerr<<"The map should at least contains player"<<endl;
+    }
+    double smallestDist = firstPairInMap->first;
+    Actor* actor = firstPairInMap->second;
+    return helpSmartZombieDetermineDir(smallestDist, actor, zombieX, zombieY);
+}
 
 //--------------- private helper functions ------------------------------
+
+
+double StudentWorld::calculateEuclideanDistance(double x1, double y1, double x2, double y2) const{
+    return (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2);
+}
+
+Direction StudentWorld::helpSmartZombieDetermineDir(double distance,const Actor* act,double zombieX,double zombieY) const{
+    if ( distance > smartZombieIdeaDis ){
+        return randInt(0, 3)*90; // randomly pick a direction for smart zombie
+    }
+    // otherwise distance is not greater than 80
+    double actX = act->getX();
+    double actY = act->getY();
+    if ( zombieX == actX) {  // same column
+        // zombie goes to up if actor is above it down otherwise
+        return zombieY<=actY ? Actor::up: Actor::down;
+    }
+    else if (zombieY == actY){ // same row
+        // zombie goes to right if actor is to its right left otherwise
+        return zombieX<=actX? Actor::right : Actor::left;
+    }
+    else if (zombieX < actX){
+        if (zombieY < actY ) { // choose direction between up and right
+            return randInt(0, 1)*90;
+        }
+        else{
+            return randInt(0, 1)*270; // choose direction between right and down
+        }
+    }
+    else{
+        if (zombieY < actY ){   // choose direction between up and left
+            return 90+randInt(0, 1)*90;
+        }
+        else{   // choose between left and down
+            return 180+randInt(0, 1)*90;
+        }
+    }
+}
+
+
 void StudentWorld::decrementCitizen(){
     num_citizens--;
 }
@@ -566,7 +632,6 @@ void StudentWorld::deleteDiedActors(){
     for(; it !=my_actors.end();it++){
         if (!(*it)->isAlive()){
             delete (*it);
-            cerr<<"actor freed"<<endl;
             it = my_actors.erase(it);
             it--;
         }
@@ -625,11 +690,7 @@ void StudentWorld::createDumbZombie(double x, double y){
 }
 
 void StudentWorld::createSmartZombie(double x, double y){
-    cerr<<"I am dumb"<<endl;
-    // comment the followint lines
-    // after implemented smartZombie class
-    // the following are only used to silent the unused variable
-    // x and y warnning on cs32 seasnet server
-    x = x;
-    y = y;
+    cerr<<"I am smart"<<endl;
+    SmartZombie* zombie = new SmartZombie(IID_ZOMBIE, x, y, this);
+    my_actors.push_back(zombie);
 }

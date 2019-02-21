@@ -421,9 +421,7 @@ bool Zombie::vomitOrNot() const{
     bool vomitOverlap = world->zombieComputeVomit(vomitX, vomitY);
     if(vomitOverlap){
         int chance = randInt(1, 3);
-        cerr<<"vomit did overlap randInt is"<<chance<<endl;
         if ( chance == 1){
-            cerr<<"zombie decided to vomit"<<endl;
             world->zombieVomit(vomitX, vomitY, dir);
             return true;
         }
@@ -473,7 +471,6 @@ void Zombie::handleOverlap(){
         if (my_movementPlan == 0){
             // decide a movement distance randomly
             my_movementPlan = randInt(3, 10);
-            cerr<<"zombie new movement plan:"<<my_movementPlan<<endl;
             zombieStrategy();
         }
         bool didMove = zombieMakeAmove();
@@ -486,8 +483,10 @@ void Zombie::handleOverlap(){
 // zombieInformWorldWhenDied NEEDS to be
 // implemented by derived classes( pure virtual )
 void Zombie::decrementLives(){
-    Actor::decrementLives();
-    zombieInformWorldWhenDied();
+    if (isAlive()){
+        Actor::decrementLives();
+        zombieInformWorldWhenDied();
+    }
 }
 
 //-------------------DumbZombie-----------------------------
@@ -498,7 +497,6 @@ DumbZombie::DumbZombie(int imageID, double startX, double startY,StudentWorld* w
 // pick one directions out of four
 void DumbZombie::zombieStrategy(){
     const int randDirction = randInt(0, 3);
-    cerr<<"direction is "<<randDirction*90<<endl;
     setDirection(randDirction*90);
 }
 
@@ -508,7 +506,21 @@ void DumbZombie::zombieInformWorldWhenDied() const{
 // MARK: smart zombie doesn't pass its location when died
 // only dumb zombie will pass it to drop vaccine
 
+//-----------------SmartZombie------------------------------
+SmartZombie::SmartZombie(int imageID, double startX, double startY,StudentWorld* world):Zombie(imageID,startX,startY,world){}
 
+// dumb zombie will randomly
+// pick one directions out of four
+void SmartZombie::zombieStrategy(){
+    Direction dir = getWorld()->smartZombieDetermineDirection(getX(), getY());
+    setDirection(dir);
+}
+// smart zombie won't pass it's coordinates to studentworld
+// when it dies, it won't drop vaccine goodie
+void SmartZombie::zombieInformWorldWhenDied() const{
+    cerr<<"I am smart but I died"<<endl;
+    getWorld()->zombieDied();
+}
 
 //Destructible object
 // when being created it must check
