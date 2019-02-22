@@ -2,6 +2,7 @@
 #define ACTOR_H_
 
 #include "GraphObject.h"
+#include <vector>
 //#include "GameConstants.h"
 
 // Students:  Add code to this file, Actor.cpp, StudentWorld.h, and StudentWorld.cpp
@@ -17,6 +18,8 @@ public:
     virtual void decrementLives();
 //    only actors derived from infectable actors are infectable
     virtual bool infectable() const{return false;}
+//    only zombies can vomit
+    virtual bool canVomit() const { return false;}
     // by default does nothing
     // only infectableActors will override this method
     virtual void setToInfected(){}
@@ -45,17 +48,24 @@ public:
     InfectableActor(int imageID, double startX, double startY, StudentWorld* world, Direction dir = 0, int depth = 0, double size = 1.0);
     virtual bool infectable() const{return true;}
     virtual void leaveExit();
-    virtual void doSometing();
-    void cure_self();
+    virtual void doSomething();
     virtual void setToInfected(){ infected = true; }
     int infectionCount() const { return infection_count; }
     virtual bool canMoveOnTo() const { return false; }
 //  derived classe needs to define this method
     virtual bool cureAble() const = 0;
+    //
+    
+protected:
+    void cure_self();
 private:
+    virtual void doSomethingElse()=0;
     virtual void infectableActorReachToExit()=0;
     virtual void turnIntoZombie()=0;
-    virtual void handleOverlap()=0;
+// infectable actors don't handleOverlap themselves
+// their actions will be adjusted by actors
+// who is overlaping with them (either get killed or be blocked)
+    virtual void handleOverlap(){};
     void incrementInfectionCount();
     void checkInfectedOrNot();
     int infection_count;
@@ -66,10 +76,9 @@ private:
 class Penelope:public InfectableActor{
 public:
     Penelope(int imageID, double startX, double startY, StudentWorld* world);
-    void extracted();
-    virtual void doSomething();
     virtual void decrementLives();
     virtual bool cureAble() const{return true;}
+    
 //  get methods
     int numVaccines() const{ return num_vaccines; }
     int numLandmines() const{ return num_landmines; }
@@ -81,14 +90,32 @@ public:
     void pickUpVaccines(){ num_vaccines+=1; };
     void pickUpFlamethrower(){ num_flamethrower+=5; };
 private:
+    virtual void doSomethingElse();
     virtual void turnIntoZombie();
     virtual void infectableActorReachToExit();
-    virtual void handleOverlap(){};
     void getKeyAndPerform();
     int num_landmines;
     int num_flamethrower;
     int num_vaccines;
     
+};
+
+class Citizen:public InfectableActor{
+public:
+    Citizen(int imageID, double startX, double startY, StudentWorld* world);
+    //define pure virtual function from InfectableActor
+    // Citizen not cureable
+    virtual bool cureAble() const { return false;}
+    virtual void decrementLives();
+private:
+    virtual void doSomethingElse();
+    virtual void infectableActorReachToExit();
+    virtual void turnIntoZombie();
+    void makeAmove();
+    bool tryToFollowPenelope(StudentWorld* world,const std::vector<Direction> & d);
+    void flipParalyzed() { paralyzed = !paralyzed; }
+    bool paralyzed;
+
 };
 
 class Exit:public Actor{
@@ -211,7 +238,7 @@ public:
     Zombie(int imageID, double startX, double startY,StudentWorld* world);
     virtual void decrementLives();
     virtual bool canMoveOnTo() const{return false;}
-    
+    virtual bool canVomit() const { return true;}
 private:
     virtual void zombieStrategy()=0;
     virtual void zombieInformWorldWhenDied() const=0;

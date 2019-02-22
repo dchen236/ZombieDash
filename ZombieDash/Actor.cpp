@@ -2,6 +2,7 @@
 #include "GraphObject.h"
 #include "GameConstants.h"
 #include "StudentWorld.h"
+#include <vector>
 #include <list>
 // Students:  Add code to this file, Actor.h, StudentWorld.h, and StudentWorld.cpp
 
@@ -47,9 +48,10 @@ InfectableActor::InfectableActor(int imageID, double startX, double startY, Stud
 }
 // infectableActor will check whether they are
 // infected or not if they are alive
-void InfectableActor::doSometing(){
+void InfectableActor::doSomething(){
     if (isAlive()){
       checkInfectedOrNot();
+        doSomethingElse();
     }
 }
 // derived classes needs to override
@@ -99,28 +101,21 @@ Penelope::Penelope(int imageID, double startX, double startY, StudentWorld* worl
 // so I will just create a dumb zombie
 void Penelope::turnIntoZombie(){
     decrementLives();
-    getWorld()->zombieBorn(getX(), getY());
+    // the indicates whether or not the dead actor is citizen
+    // since Penelope is not citizen,pass in false
+    getWorld()->zombieBorn(getX(), getY(),false);
 }
 // Penelope will attem to leave by informing studentworld
 // if no citizens left, level finishes
 void Penelope::infectableActorReachToExit(){
     getWorld()->playerAtemptToLeave();
 }
-// FIXME: check comment below
-void Penelope::doSomething(){
-// at this point Penelope is alive
-// she should check if she's infected first
-    InfectableActor::doSometing();
-    // it is possible that Penelope is dead by turning into zombie
-    if (!isAlive()) return;
+// define pure virtual function from base class
+// except for checkInfectedOrNot( base class does )
+// Penelope will get key from user and perform
+void Penelope::doSomethingElse(){
     getKeyAndPerform();
-    // right now Actor's doSomething only
-    // check overlap()
-    // if Penelope's handleOverlap does nothing eventually
-    // remember to remove this line of code
-  //  Actor::doSomething();
 }
-
 // Penelope will getKey from user
 // and perform by calling corresponding functions
 void Penelope::getKeyAndPerform() {
@@ -196,6 +191,76 @@ void Penelope:: dropLandMine(){
     }
 }
 
+//---------------Citizen-------------------------------------
+// citizens start off not paralyzed
+Citizen::Citizen(int imageID, double startX, double startY, StudentWorld* world):InfectableActor(imageID,startX,startY,world){
+    paralyzed = false;
+}
+
+// call Actor::decrementLives
+// inform world citizen died
+void Citizen::decrementLives(){
+    if (isAlive()){
+        Actor::decrementLives();
+        getWorld()->citizenDied();
+    }
+}
+
+void Citizen::doSomethingElse(){
+    if (!paralyzed){
+      makeAmove();
+    }
+    flipParalyzed();
+}
+// TODO: implement this method
+bool Citizen::tryToFollowPenelope(StudentWorld* world, const vector<Direction> & d){
+   
+    return true;
+}
+
+void Citizen::makeAmove(){
+    // call world citizenShouldMove which returns a direction
+    // setDirection( returned direction )
+    // move 2 pixel away
+    StudentWorld* world = getWorld();
+    double x = getX();
+    double y = getY();
+    // citizen should not move
+    if ( world -> citizenShouldMove(x, y) == false) return;
+    // citizen wants to follow Penelope
+    vector<Direction> playerDirs = world->citizenFollowPlayer(x, y);
+    if ( playerDirs.empty()){
+        // call world->citizenRunAway from Z
+        
+        //    TODO: handles this case
+        vector<Direction> zombieDirs =  world->citizenRunsAwayFromZombie();
+        world->citizenRunsAwayFromZombie();
+    }
+    //    TODO: implement it
+    else{ // citizen wants to follow Penelope
+        tryToFollowPenelope(world, playerDirs);
+    }
+}
+// call Actor::decrementLives
+// inform world citizen is saved by player
+void Citizen::infectableActorReachToExit(){
+    Actor::decrementLives();
+    getWorld()->citizenSaved();
+}
+
+// citizen needs to call its own decrementLives method
+// which informs studentWorld citizen died
+// then inform world to crete a new zombie
+void Citizen::turnIntoZombie(){
+    Actor::decrementLives();
+    // The spec didn't mention whether or not
+    // to play citizen died sound
+    // I will assume not playing it
+    // playing only zombie born sound instead
+    // the last paremeter indicates citizen died (not Penelope)
+    // so that studentWorld can update player's score
+    getWorld()->zombieBorn(getX(), getY(),true);
+}
 
 //---------------Exit----------------------------------------
 //constructor
@@ -227,6 +292,7 @@ Goodie::Goodie(int imageID, double startX, double startY,StudentWorld* world, Di
 void Goodie::handleOverlap(){
     StudentWorld* world = getWorld();
     if(world->goodiesCheckOverlap(this)){
+        decrementLives();
         goodiePickedUp();
     }
 }
@@ -368,20 +434,7 @@ void Vomit:: handleOverlap(){
 }
 
 
-//      citizen needs to define infectable reachToExit
 
-// CitizenREachToExit Psuedo
-// actor::decrementLives not self decrementlives !!!!!!!!!!!
-// call getWorld->citizenSaved()
-
-// citizenDecrement lives Psudeo
-// decrementLives
-// inform world citizen dead
-
-// citizen turnInToZombie psudeo
-// decrementLives self not actor:: which informs world player dead
-// randomly decide whether turns into smart zombie or dumb
-// 3/10 smart 7/10 dumb
 
 
 

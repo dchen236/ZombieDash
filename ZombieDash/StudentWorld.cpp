@@ -6,10 +6,12 @@
 #include <string>
 #include <list>
 #include <map>
+#include <vector>
 #include <iostream> // defines the overloads of the << operator
 #include <sstream>  // defines the type std::ostringstream
 #include <iomanip>
 #include <cmath>
+
 using namespace std;
 
 // Todo: switch level::citizen 
@@ -203,7 +205,7 @@ void StudentWorld::playerFireFlame(){
 // if citizens reach to exit, citizenSaved method (downbelow ) will be called
 // if player reach to exit, setLevelFinished will be called
 // setLevelFinished will check whether all citizens are saved
-void StudentWorld::exitCheckOverlap(Actor* exit){
+void StudentWorld::exitCheckOverlap(const Actor* exit){
     list<Actor*> overlapedActors = checkOverlap(exit);
         for(auto actorPtr:overlapedActors){
             if(actorPtr->allowedToExit()){
@@ -216,9 +218,8 @@ void StudentWorld::exitCheckOverlap(Actor* exit){
 //  playsound
 //  inform goodie they are picked up
 //  goodie will then inform player to increase the number of goodies
-bool StudentWorld::goodiesCheckOverlap(Actor* goodie){
+bool StudentWorld::goodiesCheckOverlap(const Actor* goodie){
     if (overlapWithPlayer(goodie->getX(),goodie->getY())){
-        goodie->decrementLives();
         increaseScore(50);
         playSound(SOUND_GOT_GOODIE);
         return true;
@@ -227,7 +228,7 @@ bool StudentWorld::goodiesCheckOverlap(Actor* goodie){
 }
 // destructive actors will call this method
 // to destroye damagable actors that overlaps with it
-void StudentWorld::destructiveCheckOverlap(Actor *destructive){
+void StudentWorld::destructiveCheckOverlap(const Actor *destructive){
     list<Actor*> overlapedActors = checkOverlap(destructive);
     for(auto actorPtr:overlapedActors){
         if ( actorPtr->damagable() ){
@@ -238,7 +239,7 @@ void StudentWorld::destructiveCheckOverlap(Actor *destructive){
 // this method will be called when landMineExplodes
 // either because it's destroyed by flames
 // or overlapping with damagable actors
-void StudentWorld::landMineExplodes(Actor* landmine){
+void StudentWorld::landMineExplodes(const Actor* landmine){
     double startX = landmine->getX()-SPRITE_WIDTH;
     double startY = landmine->getY()+SPRITE_HEIGHT;
     for(int i = 0; i < 3; i++){
@@ -256,7 +257,7 @@ void StudentWorld::landMineExplodes(Actor* landmine){
 // this function will be called by landmind during it's turn to doSomething
 // call landMineExplodes function damagable actors overlaps with it
 // it will decrement that actor's life by one
-bool StudentWorld::landMineCheckOverlap(Actor *landmine){
+bool StudentWorld::landMineCheckOverlap(const Actor *landmine){
     list<Actor*> overlapedActors = checkOverlap(landmine);
     for(auto actorPtr:overlapedActors){
         if ( actorPtr->damagable() ){
@@ -270,7 +271,7 @@ bool StudentWorld::landMineCheckOverlap(Actor *landmine){
 
 // vomit will infect infectable actors including citizens and player
 // when overlapping with them
-void StudentWorld::vomitCheckOverlap(Actor* vomit){
+void StudentWorld::vomitCheckOverlap(const Actor* vomit){
     list<Actor*> overlapedActors = checkOverlap(vomit);
     for(auto actorPtr:overlapedActors){
         if( actorPtr->infectable() ){
@@ -314,13 +315,17 @@ void StudentWorld::zombieVomit(double vomitX, double vomitY,int dir){
     my_actors.push_back(vomit);
     playSound(SOUND_ZOMBIE_VOMIT);
 }
-
+// the cause of zombieBorn is because either citizen get infected
+// or Penelope get infected, the citizenDied parameter will
+// be true if citizen died which will drop player's score
+// the following are common steps for both Penelope and citizen
 // create a zombie actor at the passed in location
 // 3/10 chance the zombie is smart
 // 7/10 chance the zombie is dumb
 // play zombie born sound
-void StudentWorld::zombieBorn(double zombieX, double zombieY){
+void StudentWorld::zombieBorn(double zombieX, double zombieY,bool citizenDied){
     // create A ZOMBIE AT THIS LOCATION
+    if (citizenDied) increaseScore(-1000);// failed to save citizen
     int smartOrDumb = randInt(1, 10);
     if ( smartOrDumb <= 3){
         cerr<<"random generator returns "<<smartOrDumb<<"smart zombie created"<<endl;
@@ -354,15 +359,13 @@ void StudentWorld::zombieDied(double dumbX,double dumbY){
     }
     playSound(SOUND_ZOMBIE_DIE);
 }
-
+// use a map to store the distance between zombie and infectable actor
+// the key is distance rather than actor* for two reasons
+// 1. I don't have to implement comparator method in actor class
+// 2. The keys( distance ) will be sorted in asending order
+// since spec said if more than one actors are closet to zombie
+// just pick one of them, we don't need to worry about duplicated distance
 Direction StudentWorld::smartZombieDetermineDirection(double zombieX, double zombieY) const{
-    
-    // use a map to store the distance between zombie and infectable actor
-    // the key is distance rather than actor* for two reasons
-    // 1. I don't have to implement comparator method in actor class
-    // 2. The keys( distance ) will be sorted in asending order
-    // since spec said if more than one actors are closet to zombie
-    // just pick one of them, we don't need to worry about duplicated distance
     map<double,Actor*> distanceToActor;
     double distanceToPlayer = calculateEuclideanDistance(player->getX(), player->getY(), zombieX, zombieY);
     distanceToActor[distanceToPlayer] = player;
@@ -381,6 +384,152 @@ Direction StudentWorld::smartZombieDetermineDirection(double zombieX, double zom
     Actor* actor = firstPairInMap->second;
     return helpSmartZombieDetermineDir(smallestDist, actor, zombieX, zombieY);
 }
+// determine distance to player and zombie
+// if there is no zombie follow player
+// else if distance to player < to zombie
+// follow the player
+//
+bool StudentWorld::citizenShouldMove(double citizenX, double citizenY) const{
+    double disToplayer = disToPlayer(citizenX, citizenY);
+    const Actor* closest = closestZombieToCitizen(citizenX, citizenY);
+    bool citizenShouldMove;
+    if ( closest == nullptr ){
+        // no zombie in the world
+        citizenShouldMove = citizenMoveOrNot(nullptr, disToplayer);
+    }
+    else{
+        double zombieX = closest->getX();
+        double zombieY = closest->getY();
+        double disToCloestZombie = calculateEuclideanDistance(zombieX, zombieY, citizenX, citizenY);
+        citizenShouldMove = citizenMoveOrNot(closest, disToplayer,disToCloestZombie);
+    }
+    return citizenShouldMove;
+}
+
+// TODO: implement this method!!!
+vector<Direction> StudentWorld::citizenRunsAwayFromZombie() const{
+    vector<Direction> dirs;
+    return dirs;
+}
+// returns the direction that allows citizens to follow player
+// This function would be called by citizen
+// when world tell them they should move
+// which means the cases when citizens should not
+// make a move has been checked already at this point
+vector<Direction> StudentWorld::citizenFollowPlayer(double citizenX, double citizenY ) const{
+    vector<Direction> dirs;
+    double disToplayer = disToPlayer(citizenX, citizenY);
+    const Actor* closest = closestZombieToCitizen(citizenX, citizenY);
+
+    // no zombie which means the distance to player is less than or equals to 80
+    // otherwise this function wouldn't be called, citizenShouldMove should returns
+    // false which tells player not to make any move
+    if ( closest == nullptr) {
+        // follow player
+        return directionToFollow(player->getX(), player->getY(), citizenX, citizenY);
+    }
+    else { // there is a closest zombie
+        double zombieX = closest->getX();
+        double zombieY = closest->getY();
+        double disToCloestZombie = calculateEuclideanDistance(zombieX, zombieY, citizenX, citizenY);
+        if ( disToplayer < disToCloestZombie ) { // follow Penelope
+            return directionToFollow(player->getX(), player->getY(), citizenX, citizenY);
+        }
+        // tell citizens they should not follow player
+        else{
+            // return empty vector essentially tells citizen
+            // they should not move
+            return dirs;
+        }
+    }
+
+}
+
+// determine whether citizen should make a move or not
+// default disToZombie is -1 when zombie is nullptr
+// if there is no zombie but distance to player is greater than
+// 80 return false - no move
+// else if there is a zombie and citizen is closer to zombie
+// return false if distance to zombie is greater than 80 - no move
+// otherwise returns true - citizen should make a movement
+bool StudentWorld::citizenMoveOrNot(const Actor* zombie,double disToPlayer,double disToZombie) const{
+    // no zombie but distance is greater than 80
+    if ( zombie == nullptr && disToPlayer > SHOULD_MOVE_DIS) return false;
+    else if ( zombie !=nullptr ){
+        if ( disToPlayer >= disToZombie ){
+            if (disToZombie > SHOULD_MOVE_DIS) return false;
+        }
+    }
+    return true;
+}
+
+vector<Direction> StudentWorld:: directionToFollow(double targetX,double targetY,double self_x,double self_y) const{
+    const int up = GraphObject::up;
+    const int down = GraphObject::down;
+    const int left = GraphObject::left;
+    const int right = GraphObject::right;
+    vector<Direction> dirs;
+    if ( self_x == targetX) {  // same column
+        // zombie goes to up if actor is above it down otherwise
+     if (self_y<=targetY){
+            dirs.push_back(up);
+        }
+        else{
+            dirs.push_back(down);
+        }
+    }
+    else if (self_y == targetY){ // same row
+        // zombie goes to right if actor is to its right left otherwise
+        if (self_x<=targetX){
+            dirs.push_back(right);
+        }
+        else{
+            dirs.push_back(left);
+        }
+    }
+    else if (self_x < targetX){
+        if (self_y < targetY ) { // choose direction between up and right
+            dirs.push_back(up);
+            dirs.push_back(right);
+        }
+        else{   // choose direction between right and down
+            dirs.push_back(down);
+            dirs.push_back(right);
+
+        }
+    }
+    else{
+        if (self_y < targetY ){   // choose direction between up and left
+            dirs.push_back(up);
+            dirs.push_back(left);
+        }
+        else{   // choose between left and down
+            dirs.push_back(left);
+            dirs.push_back(down);
+        }
+    }
+    return dirs;
+}
+
+double StudentWorld::disToPlayer(double citizenX, double citizenY) const{
+    return calculateEuclideanDistance(citizenX
+                                      , citizenY, player->getX(), player->getY());
+}
+// return the closet zombie To citizen
+// if no zombie in the world
+// return nullptr
+const Actor* StudentWorld::closestZombieToCitizen(double citizenX, double citizenY)const{
+    map<double,Actor*> disToZombie;
+    for(auto actPtr:my_actors){
+        if (actPtr->canVomit()){
+            double dis = calculateEuclideanDistance(citizenX, citizenY, actPtr->getX(), actPtr->getY());
+            disToZombie[dis] = actPtr;
+        }
+    }
+    if (disToZombie.empty()){ return nullptr; } // no zombies in the world
+    return disToZombie.begin()->second;
+}
+
 
 //--------------- private helper functions ------------------------------
 
@@ -390,36 +539,15 @@ double StudentWorld::calculateEuclideanDistance(double x1, double y1, double x2,
 }
 
 Direction StudentWorld::helpSmartZombieDetermineDir(double distance,const Actor* act,double zombieX,double zombieY) const{
-    if ( distance > smartZombieIdeaDis ){
+    if ( distance > SHOULD_MOVE_DIS ){
         return randInt(0, 3)*90; // randomly pick a direction for smart zombie
     }
     // otherwise distance is not greater than 80
     double actX = act->getX();
     double actY = act->getY();
-    if ( zombieX == actX) {  // same column
-        // zombie goes to up if actor is above it down otherwise
-        return zombieY<=actY ? Actor::up: Actor::down;
-    }
-    else if (zombieY == actY){ // same row
-        // zombie goes to right if actor is to its right left otherwise
-        return zombieX<=actX? Actor::right : Actor::left;
-    }
-    else if (zombieX < actX){
-        if (zombieY < actY ) { // choose direction between up and right
-            return randInt(0, 1)*90;
-        }
-        else{
-            return randInt(0, 1)*270; // choose direction between right and down
-        }
-    }
-    else{
-        if (zombieY < actY ){   // choose direction between up and left
-            return 90+randInt(0, 1)*90;
-        }
-        else{   // choose between left and down
-            return 180+randInt(0, 1)*90;
-        }
-    }
+    vector<Direction> dirs = directionToFollow(actX, actY, zombieX, zombieY);
+    int choice = randInt(0, (int)dirs.size()-1);
+    return  dirs[choice];// randomly pick one direction for zombie
 }
 
 
@@ -456,7 +584,7 @@ bool StudentWorld::overlapWithPlayer(double x,double y ) const{
 // This function will return a list of pointers point to actors
 // in which the actors they point to is overlapping with
 // the requestActors
-list<Actor*> StudentWorld::checkOverlap(Actor* requestActor){
+list<Actor*> StudentWorld::checkOverlap(const Actor* requestActor){
     // always check if the requestActor is the same actor
     // that's being checked with
     
@@ -642,9 +770,7 @@ void StudentWorld::deleteDiedActors(){
 // This function calculate whether two actors overlaps with each other
 // not their bounding box but their center x,y location
 bool StudentWorld::overlapWith(double x1,double y1,double x2,double y2) const{
-    double diffX = x1-x2;
-    double diffY = y1-y2;
-    return (diffX*diffX+diffY*diffY <= 100);
+    return calculateEuclideanDistance(x1, y1, x2, y2)<=OVERLAP_DIS;
 }
 
 
