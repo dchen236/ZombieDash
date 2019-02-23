@@ -218,12 +218,12 @@ void Citizen::doSomethingElse(){
 // if all the directions will block the move
 // return false
 // otherwise returns true
-bool Citizen::citizenRequestToMove(StudentWorld* world, const vector<Direction> & d){
+bool Citizen::citizenAttemptToFollowPlayer( StudentWorld* world, const vector<Direction> & d){
+
     int choices = (int)d.size()-1;
-    bool moveOk = false;
-    double x = getX();
-    double y = getY();
-    while ( choices !=-1 && !moveOk ){
+    while ( choices !=-1  ){
+        double x = getX();
+        double y = getY();
         switch (d[choices]) {
             case up:
                 y += 2;
@@ -241,18 +241,52 @@ bool Citizen::citizenRequestToMove(StudentWorld* world, const vector<Direction> 
                 break;
         }
         setDirection(d[choices]);
-        moveOk = world->actorsAttempToMakeAMove(this, x, y);
+        if ( world->actorsAttempToMakeAMove(this, x, y)){
+            moveTo(x, y);
+            return true;
+        }
         choices--;
-    }
-    // at this point either no choices left
-    // or citizen is allowed to make a move
-    if (moveOk){
-        moveTo(x, y);
-        return true; // citizen did move
     }
     return false; // citizen's movement was blocked
 }
-
+void Citizen::citizenAttemptToRunAwayFromZombie(StudentWorld *world){
+    
+    double dis_closestZ = world->distanceToCloestZombie(getX(),getY());
+    // no zombie in the world or
+    // the distance is not close enough for citizen to move
+    if (dis_closestZ < 0 || dis_closestZ > SHOULD_MOVE_DIS) return;
+    vector<Direction> directions = {up,left,right,down};
+    int currIndex = (int)directions.size()-1;
+    while ( currIndex != -1){
+        Direction d = directions[currIndex];
+        double x = getX();
+        double y = getY();
+        switch (d) {
+            case up:
+                y+=2;
+                break;
+            case down:
+                y-=2;
+                break;
+            case left:
+                x-=2;
+                break;
+            case right:
+                x+=2;
+                break;
+            default:
+                break;
+        }
+        if ( world->distanceToCloestZombie(x, y) > dis_closestZ){
+            if( world->actorsAttempToMakeAMove(this, x, y)){
+                setDirection(d);
+                moveTo(x, y);
+                return;
+            }
+        }
+            currIndex--;
+    }
+}
 void Citizen::makeAmove(){
     // call world citizenShouldMove which returns a direction
     // setDirection( returned direction )
@@ -263,26 +297,20 @@ void Citizen::makeAmove(){
     // citizen should not move
     if ( world -> citizenShouldMove(x, y) == false) return;
     // citizen wants to follow Penelope first
-    // By calling this function, directions to follow
-    // the player would be returned
-    // if the vector is empty meaning, zombie is closer to citizen
-    // citizen should not follow player
     vector<Direction> playerDirs = world->citizenFollowPlayer(x, y);
     if ( playerDirs.empty()){
-        vector<Direction> runAwayFromZombieDirs =  world->citizenRunsAwayFromZombie(x, y);
-        citizenRequestToMove(world, runAwayFromZombieDirs);
+        // direction vector is empty meaning citizen
+        // better not follow the player - run away from zombie!
+        citizenAttemptToRunAwayFromZombie(world);
     
     }
     // citizen wants to follow Penelope
     else{
         // citizen followed player immediately return
-        if (citizenRequestToMove(world, playerDirs) ) return;
+        if (citizenAttemptToFollowPlayer(world, playerDirs) ) return;
         // citizen tried to follow player but blocked
-        vector<Direction> runAwayFromZombieDirs = world->citizenRunsAwayFromZombie(x,y);
-        // no need to check whether citizen did move or not
-        // at this point no matter citizen moved or not
-        // there is no more choices left for him/her
-        citizenRequestToMove(world, runAwayFromZombieDirs);
+        // now he/she attempt to run away from zombie
+        citizenAttemptToRunAwayFromZombie(world);
     }
 }
 // call Actor::decrementLives
@@ -611,7 +639,9 @@ SmartZombie::SmartZombie(int imageID, double startX, double startY,StudentWorld*
 // pick one directions out of four
 void SmartZombie::zombieStrategy(){
     Direction dir = getWorld()->smartZombieDetermineDirection(getX(), getY());
-    setDirection(dir);
+    if (dir >= 0 ){ // make sure there is a player in the world
+      setDirection(dir);
+    }
 }
 // smart zombie won't pass it's coordinates to studentworld
 // when it dies, it won't drop vaccine goodie

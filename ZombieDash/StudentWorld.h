@@ -31,7 +31,9 @@ const double OVERLAP_DIS = 10*10;
 // if the distance is less than or
 // equals to SHOULD_MOVE_DIS
 const double SHOULD_MOVE_DIS = 80*80;
-
+// used when calculating distance
+// indictating no player int the world
+const int NO_PLAYER = -999;
 class StudentWorld : public GameWorld
 
 {
@@ -43,6 +45,15 @@ public:
     virtual void cleanUp();
 
     bool allowedToGoto( double destiX,double destiY,int moveOrFire) const;
+    
+    //    unmovable actors checkoverlap during doSomething
+    void exitCheckOverlap(const Actor* exit);
+    bool goodiesCheckOverlap(const Actor* goodie);
+    void destructiveCheckOverlap(const Actor* destructive);
+    bool landMineCheckOverlap(const Actor* landMine);
+    void landMineExplodes(const Actor* landmine);
+    void vomitCheckOverlap(const Actor* vomit);
+    
 //  player activities
     void playerPickUpVacGoodie();
     void playerPickUpLandGoodie();
@@ -50,27 +61,22 @@ public:
     void playerFireFlame();
     void playerDropLandmine();
     void playerAtemptToLeave();
+    
+    
 //    zombie activities
     bool zombieComputeVomit(double voimtX,double vomitY);
     void zombieVomit(double vomitX,double vomitY,int dir);
     void zombieBorn(double zombieX,double zombieY,bool citizenDied);
     void zombieDied(double dumbX=-1,double dumbY=-1);
     Direction smartZombieDetermineDirection(double zombieX,double zombieY ) const;
-    bool actorsAttempToMakeAMove(Actor* act,double destiX,double destiY) const;
 //    citizen activities
     void citizenDied();
     void citizenSaved();
     bool citizenShouldMove(double citizenX, double citizenY) const;
     vector<Direction> citizenFollowPlayer(double citizenX, double citizenY) const;
-    vector<Direction> citizenRunsAwayFromZombie(double citizenX, double citizenY) const;
+    double distanceToCloestZombie(double citizenX,double citizenY) const;
+    bool actorsAttempToMakeAMove(Actor* act,double destiX,double destiY) const;
     
-//    unmovable actors checkoverlap during doSomething
-    void exitCheckOverlap(const Actor* exit);
-    bool goodiesCheckOverlap(const Actor* goodie);
-    void destructiveCheckOverlap(const Actor* destructive);
-    bool landMineCheckOverlap(const Actor* landMine);
-    void landMineExplodes(const Actor* landmine);
-    void vomitCheckOverlap(const Actor* vomit);
 private:
     // helper functions
     bool citizenMoveOrNot(const Actor* zombie,double disToPlayer,double disToZombie=-1) const;

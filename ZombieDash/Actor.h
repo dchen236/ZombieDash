@@ -112,7 +112,8 @@ private:
     virtual void infectableActorReachToExit();
     virtual void turnIntoZombie();
     void makeAmove();
-    bool citizenRequestToMove(StudentWorld* world,const std::vector<Direction> & d);
+    bool citizenAttemptToFollowPlayer( StudentWorld* world,const std::vector<Direction> & d);
+    void citizenAttemptToRunAwayFromZombie(StudentWorld* world);
     void flipParalyzed() { paralyzed = !paralyzed; }
     bool paralyzed;
 
