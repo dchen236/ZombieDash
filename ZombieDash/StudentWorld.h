@@ -55,15 +55,14 @@ public:
     void zombieVomit(double vomitX,double vomitY,int dir);
     void zombieBorn(double zombieX,double zombieY,bool citizenDied);
     void zombieDied(double dumbX=-1,double dumbY=-1);
-    // returns on int indicates the direction zombie should go
     Direction smartZombieDetermineDirection(double zombieX,double zombieY ) const;
-    bool zombieMakeMove(Actor* zombie,double destiX,double destiY) const;
+    bool actorsAttempToMakeAMove(Actor* act,double destiX,double destiY) const;
 //    citizen activities
     void citizenDied();
     void citizenSaved();
     bool citizenShouldMove(double citizenX, double citizenY) const;
     vector<Direction> citizenFollowPlayer(double citizenX, double citizenY) const;
-    vector<Direction> citizenRunsAwayFromZombie() const;
+    vector<Direction> citizenRunsAwayFromZombie(double citizenX, double citizenY) const;
     
 //    unmovable actors checkoverlap during doSomething
     void exitCheckOverlap(const Actor* exit);
@@ -73,6 +72,7 @@ public:
     void landMineExplodes(const Actor* landmine);
     void vomitCheckOverlap(const Actor* vomit);
 private:
+    // helper functions
     bool citizenMoveOrNot(const Actor* zombie,double disToPlayer,double disToZombie=-1) const;
     double disToPlayer(double citizenX,double citizenY) const;
     const Actor* closestZombieToCitizen(double citizenX,double citizenY) const;
@@ -93,6 +93,7 @@ private:
     void askActorsDoSomething();
     void deleteDiedActors();
     int createActors();
+    // member variables
     int num_citizens;
     bool levelFinished;
     Penelope* player;

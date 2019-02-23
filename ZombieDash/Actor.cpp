@@ -212,10 +212,45 @@ void Citizen::doSomethingElse(){
     }
     flipParalyzed();
 }
-// TODO: implement this method
-bool Citizen::tryToFollowPenelope(StudentWorld* world, const vector<Direction> & d){
-   
-    return true;
+// citizen will choose a direction from
+// the set of vectors contains direction
+// asking studentWorld whether he/she can move
+// if all the directions will block the move
+// return false
+// otherwise returns true
+bool Citizen::citizenRequestToMove(StudentWorld* world, const vector<Direction> & d){
+    int choices = (int)d.size()-1;
+    bool moveOk = false;
+    double x = getX();
+    double y = getY();
+    while ( choices !=-1 && !moveOk ){
+        switch (d[choices]) {
+            case up:
+                y += 2;
+                break;
+            case down:
+                y -= 2;
+                break;
+            case left:
+                x -= 2;
+                break;
+            case right:
+                x += 2;
+                break;
+            default:
+                break;
+        }
+        setDirection(d[choices]);
+        moveOk = world->actorsAttempToMakeAMove(this, x, y);
+        choices--;
+    }
+    // at this point either no choices left
+    // or citizen is allowed to make a move
+    if (moveOk){
+        moveTo(x, y);
+        return true; // citizen did move
+    }
+    return false; // citizen's movement was blocked
 }
 
 void Citizen::makeAmove(){
@@ -227,18 +262,27 @@ void Citizen::makeAmove(){
     double y = getY();
     // citizen should not move
     if ( world -> citizenShouldMove(x, y) == false) return;
-    // citizen wants to follow Penelope
+    // citizen wants to follow Penelope first
+    // By calling this function, directions to follow
+    // the player would be returned
+    // if the vector is empty meaning, zombie is closer to citizen
+    // citizen should not follow player
     vector<Direction> playerDirs = world->citizenFollowPlayer(x, y);
     if ( playerDirs.empty()){
-        // call world->citizenRunAway from Z
-        
-        //    TODO: handles this case
-        vector<Direction> zombieDirs =  world->citizenRunsAwayFromZombie();
-        world->citizenRunsAwayFromZombie();
+        vector<Direction> runAwayFromZombieDirs =  world->citizenRunsAwayFromZombie(x, y);
+        citizenRequestToMove(world, runAwayFromZombieDirs);
+    
     }
-    //    TODO: implement it
-    else{ // citizen wants to follow Penelope
-        tryToFollowPenelope(world, playerDirs);
+    // citizen wants to follow Penelope
+    else{
+        // citizen followed player immediately return
+        if (citizenRequestToMove(world, playerDirs) ) return;
+        // citizen tried to follow player but blocked
+        vector<Direction> runAwayFromZombieDirs = world->citizenRunsAwayFromZombie(x,y);
+        // no need to check whether citizen did move or not
+        // at this point no matter citizen moved or not
+        // there is no more choices left for him/her
+        citizenRequestToMove(world, runAwayFromZombieDirs);
     }
 }
 // call Actor::decrementLives
@@ -253,6 +297,7 @@ void Citizen::infectableActorReachToExit(){
 // then inform world to crete a new zombie
 void Citizen::turnIntoZombie(){
     Actor::decrementLives();
+    
     // The spec didn't mention whether or not
     // to play citizen died sound
     // I will assume not playing it
@@ -502,7 +547,7 @@ bool Zombie::zombieMakeAmove(){
         default:
             break;
     }
-    if( getWorld()->zombieMakeMove(this, x, y) ){
+    if( getWorld()->actorsAttempToMakeAMove(this, x, y) ){
         moveTo(x,y);
         return true;
     }
@@ -575,14 +620,5 @@ void SmartZombie::zombieInformWorldWhenDied() const{
     getWorld()->zombieDied();
 }
 
-//Destructible object
-// when being created it must check
-// if (damagable && canBeMovedOnTo){
-//   to destoye objects
-//}
-
-// if (!canBeMovedOnTo && !damagable ) {
-//     can't be placed at this location
-//}
 
 

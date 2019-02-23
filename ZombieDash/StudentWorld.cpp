@@ -14,7 +14,6 @@
 
 using namespace std;
 
-// Todo: switch level::citizen 
 
 GameWorld* createStudentWorld(string assetPath)
 {
@@ -38,13 +37,12 @@ StudentWorld::~StudentWorld(){
 }
 
 
-// init function
+// initialize member variables
 int StudentWorld::init()
 {
     player = nullptr;
     levelFinished = false;
     num_citizens = 0;
-//    citizenSaved = false;
     int status = createActors();
     return status;
 }
@@ -58,7 +56,7 @@ int StudentWorld::init()
 // return continue game status
 int StudentWorld::move()
 {
-    if(!player->isAlive()){
+    if(player!= nullptr && !player->isAlive()){
         playSound(SOUND_PLAYER_DIE);
         return GWSTATUS_PLAYER_DIED;
     }
@@ -67,7 +65,7 @@ int StudentWorld::move()
         playSound(SOUND_LEVEL_FINISHED);
         return GWSTATUS_FINISHED_LEVEL;
     }
-    if(player->isAlive()){
+    if(player!= nullptr && player->isAlive()){
         player->doSomething();
     }
 
@@ -91,7 +89,9 @@ void StudentWorld::cleanUp()
     }
     if ( my_actors.empty() && player == nullptr) cerr<<"All memory freed"<<endl;
 }
-
+// this function will be called by player or flame
+// since they both don't need to check against themselves
+// and player ( since play won't block flame)
 // two cases for this method
 // if moveOrFire is MOVE
 // check if there is a actor (wall for examle) that will block the move
@@ -117,11 +117,17 @@ bool StudentWorld::allowedToGoto( double destiX,double destiY,int moveOrFire) co
     return true;
 }
 
-bool StudentWorld::zombieMakeMove(Actor* zombie,double destiX,double destiY) const{
+// This function will be called by zombie and citizens
+// since they both need to check whether they will be blocked
+// by player and this function should not check whether
+// they block against themselves
+// return true if they are allowed to move
+// false otherwise
+bool StudentWorld::actorsAttempToMakeAMove(Actor* act,double destiX,double destiY) const{
     if( boundingBoxOverlap(destiX, destiY, player->getX(),player->getY())) { return false; }
     auto it = my_actors.begin();
     while (it != my_actors.end() ){
-        if ( *it != zombie ){
+        if ( *it != act ){
             if ( boundingBoxOverlap(destiX, destiY, (*it)->getX(), (*it)->getY()) ) {
                 if ( !((*it)->canMoveOnTo()) ){
                     return false;  
@@ -325,6 +331,7 @@ void StudentWorld::zombieVomit(double vomitX, double vomitY,int dir){
 // play zombie born sound
 void StudentWorld::zombieBorn(double zombieX, double zombieY,bool citizenDied){
     // create A ZOMBIE AT THIS LOCATION
+    num_citizens--;
     if (citizenDied) increaseScore(-1000);// failed to save citizen
     int smartOrDumb = randInt(1, 10);
     if ( smartOrDumb <= 3){
@@ -339,9 +346,11 @@ void StudentWorld::zombieBorn(double zombieX, double zombieY,bool citizenDied){
     playSound(SOUND_ZOMBIE_BORN);
 }
 
-
-// TODO:
-// implement the logic of creating goodie
+// This function updates the stat label when zombie dies
+// the default value of dumbX and dumbY are both -1
+// they will only be set when dumb Zombie dies
+// to update the stat label accordingly
+// and randomly introduce a vaccine goodie
 void StudentWorld::zombieDied(double dumbX,double dumbY){
     // default
     if (dumbX == -1 ){
@@ -406,9 +415,28 @@ bool StudentWorld::citizenShouldMove(double citizenX, double citizenY) const{
     return citizenShouldMove;
 }
 
-// TODO: implement this method!!!
-vector<Direction> StudentWorld::citizenRunsAwayFromZombie() const{
+// return the directions in which citizen should go to run away
+// from the cloest to zombie if the Euclidean distance is <= 80
+// othterwise returns empty vector tell citizen don't move
+vector<Direction> StudentWorld::citizenRunsAwayFromZombie(double citizenX, double citizenY) const{
     vector<Direction> dirs;
+    const Actor* cloestZombie = closestZombieToCitizen(citizenX, citizenY);
+    // no zombie in the playground or distance <= 80
+    if (cloestZombie == nullptr ||
+        calculateEuclideanDistance(citizenX, citizenY,
+        cloestZombie->getX(), cloestZombie->getY()) > SHOULD_MOVE_DIS ) return dirs;
+    // otherwise help citizen determine direction
+    double zombieX = cloestZombie->getX();
+    double zombieY = cloestZombie->getY();
+    // the signature of this function is
+    // directionToFollow(double targetX, double targetY, double self_x, double self_y)
+    // calling this function will return the directions to go from self to target
+    // since I want citizen to run away from zombie
+    // I can just flip the target and self so that the directions
+    // returned will be the opposite direction which is what I want
+    dirs = directionToFollow(citizenX, citizenY, zombieX, zombieY);
+    
+    
     return dirs;
 }
 // returns the direction that allows citizens to follow player
@@ -422,8 +450,8 @@ vector<Direction> StudentWorld::citizenFollowPlayer(double citizenX, double citi
     const Actor* closest = closestZombieToCitizen(citizenX, citizenY);
 
     // no zombie which means the distance to player is less than or equals to 80
-    // otherwise this function wouldn't be called, citizenShouldMove should returns
-    // false which tells player not to make any move
+    // otherwise this function wouldn't be called, citizenShouldMove should return false
+    //  which tells player not to make any move
     if ( closest == nullptr) {
         // follow player
         return directionToFollow(player->getX(), player->getY(), citizenX, citizenY);
@@ -462,7 +490,12 @@ bool StudentWorld::citizenMoveOrNot(const Actor* zombie,double disToPlayer,doubl
     }
     return true;
 }
-
+// This function reteturns a vector of directions
+// for citizens and zombies to determine which direction
+// they should go. When citizen calls this direction, the
+// parameter will be passed in reverse order so that the
+// returned directions are in opposite direction so that
+// they can run away from zombies
 vector<Direction> StudentWorld:: directionToFollow(double targetX,double targetY,double self_x,double self_y) const{
     const int up = GraphObject::up;
     const int down = GraphObject::down;
@@ -510,11 +543,15 @@ vector<Direction> StudentWorld:: directionToFollow(double targetX,double targetY
     }
     return dirs;
 }
-
+// This function returns the distance to player
 double StudentWorld::disToPlayer(double citizenX, double citizenY) const{
     return calculateEuclideanDistance(citizenX
                                       , citizenY, player->getX(), player->getY());
 }
+
+
+//--------------- private helper functions ------------------------------
+
 // return the closet zombie To citizen
 // if no zombie in the world
 // return nullptr
@@ -530,14 +567,13 @@ const Actor* StudentWorld::closestZombieToCitizen(double citizenX, double citize
     return disToZombie.begin()->second;
 }
 
-
-//--------------- private helper functions ------------------------------
-
-
+// This function returns the EuclideanDistance from
+// to points
 double StudentWorld::calculateEuclideanDistance(double x1, double y1, double x2, double y2) const{
     return (x1-x2)*(x1-x2) + (y1-y2)*(y1-y2);
 }
-
+// This function will randomly pick a direction from
+// the available directions for smartZombie
 Direction StudentWorld::helpSmartZombieDetermineDir(double distance,const Actor* act,double zombieX,double zombieY) const{
     if ( distance > SHOULD_MOVE_DIS ){
         return randInt(0, 3)*90; // randomly pick a direction for smart zombie
@@ -550,7 +586,7 @@ Direction StudentWorld::helpSmartZombieDetermineDir(double distance,const Actor*
     return  dirs[choice];// randomly pick one direction for zombie
 }
 
-
+// reduce the number of citizens by one
 void StudentWorld::decrementCitizen(){
     num_citizens--;
 }
@@ -688,13 +724,14 @@ int StudentWorld::createActors(){
                         my_actors.push_back(wall);
                     }
                         break;
-                        
-                        //                        FIXME: uncomment these lines
-//                    case Level::citizen:
-//                    {
-//                        num_citizens+=1;
-//                    }
-                        //break;
+
+                    case Level::citizen:
+                    {
+                        Citizen* citizen = new Citizen(IID_CITIZEN, startX, startY, this);
+                        my_actors.push_back(citizen);
+                        num_citizens+=1;
+                    }
+                        break;
                     case Level::exit:
                     {
                         Exit* exit = new Exit(IID_EXIT,startX,startY,this);
@@ -808,13 +845,13 @@ bool StudentWorld::boundingBoxOverlap(double x1,double y1,double x2, double y2) 
     return false;
 }
 
-
+// This function creates a dumb zombie at (x,y)
 void StudentWorld::createDumbZombie(double x, double y){
     cerr<<"I am dumb"<<endl;
     DumbZombie* zombie = new DumbZombie(IID_ZOMBIE, x, y, this);
     my_actors.push_back(zombie);
 }
-
+// This function creates a smart zombie ar (x,y)
 void StudentWorld::createSmartZombie(double x, double y){
     cerr<<"I am smart"<<endl;
     SmartZombie* zombie = new SmartZombie(IID_ZOMBIE, x, y, this);
