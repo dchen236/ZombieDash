@@ -431,30 +431,7 @@ double StudentWorld::distanceToCloestZombie(double citizenX, double citizenY) co
     }
     return -1;// no zombie in the world
 }
-//// return the directions in which citizen should go to run away
-//// from the cloest to zombie if the Euclidean distance is <= 80
-//// othterwise returns empty vector tell citizen don't move
-//vector<Direction> StudentWorld::citizenRunsAwayFromZombie(double citizenX, double citizenY) const{
-//    vector<Direction> dirs;
-//    const Actor* cloestZombie = closestZombieToCitizen(citizenX, citizenY);
-//    // no zombie in the playground or distance <= 80
-//    if (cloestZombie == nullptr ||
-//        calculateEuclideanDistance(citizenX, citizenY,
-//        cloestZombie->getX(), cloestZombie->getY()) > SHOULD_MOVE_DIS ) return dirs;
-//    // otherwise help citizen determine direction
-//    double zombieX = cloestZombie->getX();
-//    double zombieY = cloestZombie->getY();
-//    // the signature of this function is
-//    // directionToFollow(double targetX, double targetY, double self_x, double self_y)
-//    // calling this function will return the directions to go from self to target
-//    // since I want citizen to run away from zombie
-//    // I can just flip the target and self so that the directions
-//    // returned will be the opposite direction which is what I want
-//    dirs = directionToFollow(citizenX, citizenY, zombieX, zombieY);
-//    
-//    
-//    return dirs;
-//}
+
 // returns the direction that allows citizens to follow player
 // This function would be called by citizen
 // when world tell them they should move

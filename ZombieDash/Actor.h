@@ -124,7 +124,6 @@ public:
     Exit(int imageID, double startX, double startY,StudentWorld* world, Direction dir = 0, int depth = 1, double size = 1.0);
     virtual bool canMoveOnTo() const { return true; }
     virtual bool willBlockFlame() const { return true;}
-//    virtual void doSomething(); handled by abc
     virtual bool damagable() const{ return false; }
 private:
     virtual void handleOverlap();
@@ -227,12 +226,6 @@ private:
     int my_remainingTick;
 };
 
-
-
-
-//TODO: CITIZEN CLASS NEEDS TO OVERRIDE ISCITIZEN
-
-//TODO: ZOMBIE ABC CLASS CAN BE MOVED ONTO FALSE optional
 
 class Zombie:public Actor{
 public:
