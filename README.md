@@ -1,6 +1,7 @@
 # ZombieDash
 Zombie Dash 
 Zombie Dash is an project designed by Professor Carey Nachenberg http://careynachenberg.weebly.com/cs-slides.html
+
 ![screen shot 2019-02-23 at 19 38 22](https://user-images.githubusercontent.com/32973628/53294791-983ee880-37a2-11e9-8bfb-1f8cb1f7c577.png)
 
 # Instruction to run the program on macOs:
