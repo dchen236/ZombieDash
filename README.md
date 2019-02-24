@@ -18,7 +18,7 @@ Install the homebrew package manager.
 Open a Terminal window and run the command brew install freeglut.
 
 Suggestion: It would be much more convinient if you have Xcode installed. 
-However if your running it in terminal make sure the Assets is in the same folder as the executable program
+However if you are running it in terminal make sure the Assets is in the same folder as the executable program
 
 Troubles some of the user may encounter when using Xcode
 You might get a message at startup relating to the Assets directory or level data not loaded properly etc. 
