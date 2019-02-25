@@ -68,6 +68,13 @@ void InfectableActor::cure_self(){
     }
 }
 
+void InfectableActor::setToInfected(){
+    if ( !infected ){
+        playSoundWhenInfected();
+       infected = true;
+    }
+    
+}
 // invoke incremetnInfectionCount below
 void InfectableActor::checkInfectedOrNot(){
     if(infected){
@@ -318,6 +325,9 @@ void Citizen::makeAmove(){
 void Citizen::infectableActorReachToExit(){
     Actor::decrementLives();
     getWorld()->citizenSaved();
+}
+void Citizen::playSoundWhenInfected(){
+    getWorld()->playSound(SOUND_CITIZEN_INFECTED);
 }
 
 // citizen needs to call its own decrementLives method
@@ -627,7 +637,7 @@ void DumbZombie::zombieStrategy(){
 }
 
 void DumbZombie::zombieInformWorldWhenDied() const{
-    getWorld()->zombieDied(getX(),getY());
+    getWorld()->zombieDied(getX(),getY(),getDirection());
 }
 // MARK: smart zombie doesn't pass its location when died
 // only dumb zombie will pass it to drop vaccine

@@ -256,7 +256,8 @@ void StudentWorld::landMineExplodes(const Actor* landmine){
         for (int j = 0; j < 3; j++){
             double x = startX+i*SPRITE_WIDTH;
             double y = startY-j*SPRITE_HEIGHT;
-            Flame* flame = new Flame(IID_FLAME, x, y, this, 0);
+            const Direction up = GraphObject::up;
+            Flame* flame = new Flame(IID_FLAME, x, y, this, up);
             my_actors.push_back(flame);
         }
     }
@@ -333,6 +334,10 @@ void StudentWorld::zombieVomit(double vomitX, double vomitY,int dir){
 // 3/10 chance the zombie is smart
 // 7/10 chance the zombie is dumb
 // play zombie born sound
+// the reason I am passingthis extra citizenDied argument
+// is to distinguish it between citizens and Penelope
+// when player dies, player becomes zombie as well but the
+// score won't be reduced
 void StudentWorld::zombieBorn(double zombieX, double zombieY,bool citizenDied){
     // create A ZOMBIE AT THIS LOCATION
     num_citizens--;
@@ -355,7 +360,8 @@ void StudentWorld::zombieBorn(double zombieX, double zombieY,bool citizenDied){
 // they will only be set when dumb Zombie dies
 // to update the stat label accordingly
 // and randomly introduce a vaccine goodie
-void StudentWorld::zombieDied(double dumbX,double dumbY){
+void StudentWorld::zombieDied(double dumbX,double dumbY,Direction d){
+    playSound(SOUND_ZOMBIE_DIE);
     // default
     if (dumbX == -1 ){
         increaseScore(2000);
@@ -366,11 +372,28 @@ void StudentWorld::zombieDied(double dumbX,double dumbY){
         cerr<<" dumb zombie died, random chance is "<<chance<<endl;
         if ( chance == 1 ){
             cerr<<" chance equals to one dumb zombie droped a vaccine goodie"<<endl;
-            VaccineGoodie* vacc = new VaccineGoodie(IID_VACCINE_GOODIE, dumbX, dumbY, this);
-            my_actors.push_back(vacc);
+            switch (d) {
+                case Actor::up:
+                    dumbY+=SPRITE_HEIGHT;
+                    break;
+                case Actor::down:
+                    dumbY-=SPRITE_HEIGHT;
+                    break;
+                case Actor::right:
+                    dumbX+=SPRITE_WIDTH;
+                    break;
+                case Actor::left:
+                    dumbX-=SPRITE_WIDTH;
+                    break;
+                default:
+                    break;
+            }
+            if (allowedToGoto(dumbX, dumbY, MOVE)){
+                VaccineGoodie* vacc = new VaccineGoodie(IID_VACCINE_GOODIE, dumbX, dumbY, this);
+                my_actors.push_back(vacc);
+            }
         }
     }
-    playSound(SOUND_ZOMBIE_DIE);
 }
 // use a map to store the distance between zombie and infectable actor
 // the key is distance rather than actor* for two reasons
@@ -689,17 +712,19 @@ string StudentWorld::generateStateText() const{
     }
     oss<<setw(6)<<getScore();
     oss.fill(' ');
+    oss<<right;
     oss<<setw(8)<<"Level:";
     oss<<setw(3)<<getLevel();
     oss<<setw(8)<<"Lives:";
     oss<<setw(2)<<getLives();
-    oss<<setw(7)<<"Vacc:";
-    oss<<setw(3)<<numVacc;
+    oss<<setw(10)<<"Vaccine:";
+    oss<<setw(2)<<numVacc;
     oss<<setw(9)<<"Flames:";
     oss<<setw(3)<<numFlame;
     oss<<setw(8)<<"Mines:";
     oss<<setw(3)<<nunLand;
-    oss<<setw(11)<<"Infected:";
+    oss<<setw(12)<<"Infected: ";
+    oss<<left;
     oss<<setw(4)<<infecCount;
     return oss.str();
 }

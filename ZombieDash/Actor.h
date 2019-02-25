@@ -49,7 +49,7 @@ public:
     virtual bool infectable() const{return true;}
     virtual void leaveExit();
     virtual void doSomething();
-    virtual void setToInfected(){ infected = true; }
+    virtual void setToInfected();
     int infectionCount() const { return infection_count; }
     virtual bool canMoveOnTo() const { return false; }
 //  derived classe needs to define this method
@@ -59,6 +59,8 @@ public:
 protected:
     void cure_self();
 private:
+    
+    virtual void playSoundWhenInfected()=0;
     virtual void doSomethingElse()=0;
     virtual void infectableActorReachToExit()=0;
     virtual void turnIntoZombie()=0;
@@ -90,6 +92,8 @@ public:
     void pickUpVaccines(){ num_vaccines+=1; };
     void pickUpFlamethrower(){ num_flamethrower+=5; };
 private:
+    // player does not playsound when infected
+    virtual void playSoundWhenInfected(){};
     virtual void doSomethingElse();
     virtual void turnIntoZombie();
     virtual void infectableActorReachToExit();
@@ -108,6 +112,7 @@ public:
     virtual bool cureAble() const { return false;}
     virtual void decrementLives();
 private:
+    virtual void playSoundWhenInfected();
     virtual void doSomethingElse();
     virtual void infectableActorReachToExit();
     virtual void turnIntoZombie();
@@ -261,3 +266,4 @@ private:
     virtual void zombieInformWorldWhenDied() const;
 };
 #endif // ACTOR_H_
+

@@ -67,7 +67,7 @@ public:
     bool zombieComputeVomit(double voimtX,double vomitY);
     void zombieVomit(double vomitX,double vomitY,int dir);
     void zombieBorn(double zombieX,double zombieY,bool citizenDied);
-    void zombieDied(double dumbX=-1,double dumbY=-1);
+    void zombieDied(double dumbX=-1,double dumbY=-1,Direction d = 0);
     Direction smartZombieDetermineDirection(double zombieX,double zombieY ) const;
 //    citizen activities
     void citizenDied();
