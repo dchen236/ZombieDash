@@ -90,8 +90,8 @@ void InfectableActor::incrementInfectionCount(){
         turnIntoZombie();
         return;
     }
-    infection_count+=1;
     
+    infection_count+=1;
 }
 //----------------------Penelope class----------------------------
 
@@ -323,9 +323,12 @@ void Citizen::makeAmove(){
 // call Actor::decrementLives
 // inform world citizen is saved by player
 void Citizen::infectableActorReachToExit(){
-    Actor::decrementLives();
-    getWorld()->citizenSaved();
+    if (isAlive()){
+        Actor::decrementLives();
+        getWorld()->citizenSaved();
+    }
 }
+
 void Citizen::playSoundWhenInfected(){
     getWorld()->playSound(SOUND_CITIZEN_INFECTED);
 }
@@ -335,7 +338,6 @@ void Citizen::playSoundWhenInfected(){
 // then inform world to crete a new zombie
 void Citizen::turnIntoZombie(){
     Actor::decrementLives();
-    
     // The spec didn't mention whether or not
     // to play citizen died sound
     // I will assume not playing it

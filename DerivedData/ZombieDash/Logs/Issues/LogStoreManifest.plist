@@ -6,7 +6,7 @@
 	<integer>9</integer>
 	<key>logs</key>
 	<dict>
-		<key>4CA41291-5F04-43B5-BB30-CE8CE4EEE42A</key>
+		<key>21948765-1BF6-406F-A177-7577DB35A730</key>
 		<dict>
 			<key>className</key>
 			<string>IDEActivityLogSection</string>
@@ -15,19 +15,19 @@
 			<key>domainType</key>
 			<string>Xcode.IDEActivityLogDomainType.target.product-type.tool</string>
 			<key>fileName</key>
-			<string>4CA41291-5F04-43B5-BB30-CE8CE4EEE42A.xcactivitylog</string>
+			<string>21948765-1BF6-406F-A177-7577DB35A730.xcactivitylog</string>
 			<key>highLevelStatus</key>
 			<string>S</string>
 			<key>signature</key>
 			<string>ZombieDash-bcoxulavsxstybfkyicxgwgifuup</string>
 			<key>timeStartedRecording</key>
-			<real>572757173.22191501</real>
+			<real>572999208.40336502</real>
 			<key>timeStoppedRecording</key>
-			<real>572757174.82961202</real>
+			<real>572999209.78248596</real>
 			<key>title</key>
 			<string>Build target ZombieDash</string>
 			<key>uniqueIdentifier</key>
-			<string>4CA41291-5F04-43B5-BB30-CE8CE4EEE42A</string>
+			<string>21948765-1BF6-406F-A177-7577DB35A730</string>
 		</dict>
 	</dict>
 	<key>preserveOldLogs</key>

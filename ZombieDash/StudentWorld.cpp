@@ -218,7 +218,7 @@ void StudentWorld::playerFireFlame(){
 void StudentWorld::exitCheckOverlap(const Actor* exit){
     list<Actor*> overlapedActors = checkOverlap(exit);
         for(auto actorPtr:overlapedActors){
-            if(actorPtr->allowedToExit()){
+            if(actorPtr->allowedToExit() && actorPtr->isAlive()){
                 actorPtr->leaveExit();
             }
         }
@@ -297,7 +297,7 @@ void StudentWorld::vomitCheckOverlap(const Actor* vomit){
 // return true
 // otherwise return false
 void StudentWorld::playerAtemptToLeave(){
-    cerr<<"num citizens is "<< num_citizens<<endl;
+    cerr<<"citizen left: "<<num_citizens<<endl;
     if (num_citizens == 0){
         levelFinished = true;
     }
@@ -340,8 +340,11 @@ void StudentWorld::zombieVomit(double vomitX, double vomitY,int dir){
 // score won't be reduced
 void StudentWorld::zombieBorn(double zombieX, double zombieY,bool citizenDied){
     // create A ZOMBIE AT THIS LOCATION
-    num_citizens--;
-    if (citizenDied) increaseScore(-1000);// failed to save citizen
+    
+    if (citizenDied) {
+        increaseScore(-1000);// failed to save citizen
+        num_citizens--;
+    }
     int smartOrDumb = randInt(1, 10);
     if ( smartOrDumb <= 3){
         cerr<<"random generator returns "<<smartOrDumb<<"smart zombie created"<<endl;
